@@ -1,0 +1,18 @@
+<resources>
+    <string name="app_name">ecosystems</string>
+    <string name="image_error">Здесь должна быть картинка</string>
+    <string name="welcome">Добро пожаловать</string>
+    <string name="input_login_str_i"><i>Введите логин</i></string>
+    <string name="input_password_str_i"><i>Введите пароль</i></string>
+    <string name="log_in">Войти</string>
+    <string name="not_registered">Ещё не зарегистрированы?</string>
+    <string name="to_register_u"><u>Зарегистрироваться</u></string>
+    <string name="user_agreement">Нажимая на кнопку \'Зарегистироваться\' я принимаю <a href="https://smartecosystems.petrsu.ru/agreement"> условия пользовательского соглашения</a></string>
+    <string name="new_login_Str">Email (логин)*</string>
+    <string name="full_name">ФИО</string>
+    <string name="org_str">Организация</string>
+    <string name="password_str">Пароль*</string>
+    <string name="repeat_password_str">Повторить пароль*</string>
+    <string name="close">Закрыть</string>
+    <string name="to_register">Зарегистрироваться</string>
+</resources>
