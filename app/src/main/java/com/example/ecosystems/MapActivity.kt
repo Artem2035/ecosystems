@@ -2,6 +2,7 @@ package com.example.ecosystems
 
 import android.annotation.SuppressLint
 import android.app.Dialog
+import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
@@ -12,19 +13,23 @@ import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
-import android.widget.EditText
+import android.widget.ImageButton
+import android.widget.SearchView
 import android.widget.TableLayout
 import android.widget.TableRow
 import android.widget.TextView
 import android.widget.Toast
 import androidx.annotation.WorkerThread
 import androidx.appcompat.app.AppCompatActivity
-import androidx.cardview.widget.CardView
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
+import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.MarkerOptions
+import com.google.android.gms.maps.model.LatLngBounds
 import com.google.android.material.chip.ChipGroup.LayoutParams
 import com.google.android.material.chip.ChipGroup.TEXT_ALIGNMENT_CENTER
 import com.google.gson.Gson
@@ -36,12 +41,12 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
+import java.util.Locale
 
+import com.example.ecosystems.DeviceDataTable.showDataWindow
 
 class MapActivity : AppCompatActivity(), OnMapReadyCallback {
-
-
-    inner class MyMarker(pos: LatLng, title: String, ) : ClusterItem
+    inner class MyMarker(pos: LatLng, title: String) : ClusterItem
     {
 
         private val position: LatLng
@@ -71,8 +76,18 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     private lateinit var clusterManager: ClusterManager<MyMarker>
-
     lateinit var mMap: GoogleMap
+
+    private var mapFragment: SupportMapFragment? = null
+    private var currentCameraPosition: CameraPosition = CameraPosition(
+        LatLng(57.907,36.58),
+        4.67F,0.0F,0.0F)
+
+   //  recycle view
+    private lateinit var devicesRecyclerView: RecyclerView
+    private var devicesList: MutableList<Device> = mutableListOf()
+    private var tempDevicesList: MutableList<Device> = mutableListOf()
+    private lateinit var token:String
 
     var listOfDeviceParametertsNames: Map<String, String> = mapOf("name" to "Название",
         "location_description" to "Описание местности", "last_update_datetime" to "Последнее обновление",
@@ -81,16 +96,28 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback {
     var mapOfDeviceParameters: MutableMap<String, Map<String, Any?>> = mutableMapOf()
 
     override fun onCreate(savedInstanceState: Bundle?) {
-
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_map)
 
-
         Thread {
             try {
-                val token = GetToken()
                 Log.d("Get devices","devices")
+
+                token = intent.getStringExtra("token").toString()
                 GetDevices(token)
+                var index: Int = 0
+                for (device in listOfDevices){
+                    val name = device.get("name").toString()
+                    val location = device.get("location_description").toString()
+                    val lastUpdate = device.get("last_update_datetime").toString()
+                    val deviceItem = Device(index, name, location, lastUpdate)
+                    devicesList.add(deviceItem)
+                    index += 1
+                }
+                Log.d("get devices", "Success")
+                while(!this::clusterManager.isInitialized)
+                    Log.d("clusterManager", "Getting Initialized")
+                DrawDevicesOnMap()
             }
             catch (exception: Exception)
             {
@@ -104,121 +131,92 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback {
             //Do some Network Request
         }.start()
 
-        val mapFragment = supportFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
-        mapFragment.getMapAsync(this)
-    }
 
+        // Инициализируем MapFragment только если он еще не был добавлен
+        mapFragment = supportFragmentManager.findFragmentById(R.id.map) as? SupportMapFragment
+            ?: SupportMapFragment.newInstance().apply {
+                supportFragmentManager.beginTransaction().replace(R.id.map, this).commit()
+            }
+
+        mapFragment?.getMapAsync(this)
+    }
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap
         mMap.isBuildingsEnabled = true
         clusterManager = ClusterManager(this, mMap)
         clusterManager.setOnClusterItemClickListener { marker ->
             val index = marker.title.toInt()
-            showDataWindow(index)
+            showDataWindow(index, listOfDevices, mapOfDeviceParameters,listOfDeviceParametertsNames, this)
             true
         }
         mMap.setOnCameraIdleListener(clusterManager)
         mMap.setOnMarkerClickListener(clusterManager)
 
-        val addMarkerButton:CardView = findViewById(R.id.addMarker)
-        addMarkerButton.setOnClickListener {
-            val xCoordinate = findViewById(R.id.editTextNumber) as EditText
-            val yCoordinate = findViewById(R.id.editTextNumber2) as EditText
-            if(!xCoordinate.text.isNullOrEmpty() && !yCoordinate.text.isNullOrEmpty())
-            {
-                val x: Double = xCoordinate.text.toString().toDouble()
-                val y: Double = yCoordinate.text.toString().toDouble()
-                val newPoint = LatLng(x, y)
-                mMap.addMarker(MarkerOptions().position(newPoint).title("Some new point on the map"))
-            }
-        }
+        mMap.moveCamera(CameraUpdateFactory.newCameraPosition(currentCameraPosition))
     }
 
     fun closeButton(view: View) {
         startMainActivity()
     }
 
-    @SuppressLint("SetTextI18n")
-    fun showDataWindow(index: Int)
-    {
-        val dialog = layoutInflater.inflate(R.layout.device_data, null)
-        val container = Dialog(this)
-        container.setContentView(dialog)
-        container.setCancelable(true)
-        val width = ViewGroup.LayoutParams.MATCH_PARENT
-        val height = ViewGroup.LayoutParams.MATCH_PARENT
-        container.window?.setLayout(width, height)
-        container.window?.setBackgroundDrawable(ColorDrawable(Color.WHITE))
-        container.show()
+    fun showListOfDevices(view: View){
+        currentCameraPosition = mMap.cameraPosition
 
-        val table = dialog.findViewById<TableLayout>(R.id.dataTable)
-
-        val device = listOfDevices.get(index)
-        addRowHeader(table,"Описание устройства")
-        addRow(table, "name",device)
-        addRow(table, "location_description",device)
-        addRow(table, "last_update_datetime",device)
-        addRow(table, "latitude",device)
-        addRow(table, "longitude",device)
-        addRowHeader(table,"Показатели с устройства")
-
-        val deviceTypeId = if(device.get("device_type_id").toString() == "") ""
-        else (device.get("device_type_id").toString().toDouble().toInt()).toString()
-
-        var moduleTypeId = device.get("module_type_id")
-        if(moduleTypeId == null)
-            moduleTypeId = ""
-        val lastParameters = device.get("last_parameter_values") as Map<String, Any?>
-        for(parametr in lastParameters.keys)
-        {
-            val paramId = "${deviceTypeId}_${moduleTypeId}_${parametr}"
-            val parameter = mapOfDeviceParameters.get(paramId)
-            if(parameter == null)
-                continue
-            val tableRow = TableRow(this)
-            tableRow.layoutParams = ViewGroup.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
-            val text = TextView(this)
-            Log.d("param","${parameter}")
-            text.text = "${parameter.get("label")}:"
-            tableRow.addView(text)
-            val text2 = TextView(this)
-            val param = if(lastParameters[parametr] != null) lastParameters[parametr] else "Нет данных"
-            text2.text = "${param}"
-            tableRow.addView(text2)
-            table.addView(tableRow);
+        // Удаляем фрагмент перед переключением макета
+        supportFragmentManager.findFragmentById(R.id.map)?.let {
+            supportFragmentManager.beginTransaction().remove(it).commitNowAllowingStateLoss()
         }
 
-        val button = dialog.findViewById<Button>(R.id.button)
+        setContentView(R.layout.activity_map_list_of_devices)
+
+        devicesRecyclerView = findViewById(R.id.devices_recycler_view)
+        devicesRecyclerView.layoutManager = LinearLayoutManager(this)
+        tempDevicesList.addAll(devicesList)
+        val deviceAdapter: DeviceAdapter = DeviceAdapter(tempDevicesList, listOfDevices, mapOfDeviceParameters, listOfDeviceParametertsNames)
+        devicesRecyclerView.adapter = deviceAdapter
+
+        //поиск
+        val searchView = findViewById<androidx.appcompat.widget.SearchView>(R.id.searchView)
+        searchView.setOnQueryTextListener(object : androidx.appcompat.widget.SearchView.OnQueryTextListener{
+            override fun onQueryTextSubmit(query: String?): Boolean {
+                return false
+            }
+
+            override fun onQueryTextChange(newText: String?): Boolean {
+                tempDevicesList.clear()
+                val searchText = newText!!.lowercase(Locale.getDefault())
+                if(!searchText.isEmpty()){
+                    devicesList.forEach {
+                        if(it.heading.lowercase(Locale.getDefault()).contains(searchText)){
+                            tempDevicesList.add(it)
+                        }
+                    }
+                    deviceAdapter.notifyDataSetChanged()
+                }else{
+                    tempDevicesList.clear()
+                    tempDevicesList.addAll(devicesList)
+                    deviceAdapter.notifyDataSetChanged()
+                }
+                return false
+            }
+        })
+
+        val button = findViewById<ImageButton>(R.id.showMap)
         button.setOnClickListener {
-            container.dismiss()
+            setContentView(R.layout.activity_map)
+            mapFragment = supportFragmentManager.findFragmentById(R.id.map) as? SupportMapFragment
+                ?: SupportMapFragment.newInstance().apply {
+                    supportFragmentManager.beginTransaction().replace(R.id.map, this).commit()
+                }
+            mapFragment?.getMapAsync(this)
+            Log.d("test",listOfDevices.toString())
+
+            Log.d("get devices", "Success")
+            Log.d("map23",currentCameraPosition.toString())
+
+            DrawDevicesOnMap()
+            //mMap.moveCamera(CameraUpdateFactory.newCameraPosition(currentCameraPosition))
         }
-    }
-
-    fun addRow(table: TableLayout, parametr: String, device: Map<String, Any?>)
-    {
-        val tableRow = TableRow(this)
-        tableRow.layoutParams = ViewGroup.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
-        val text = TextView(this)
-        Log.d("param", parametr)
-        text.text = "${listOfDeviceParametertsNames.get(parametr)} :"
-        //text.layoutParams = TableRow.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT, 1.0f)
-        tableRow.addView(text)
-        val text2 = TextView(this)
-        text2.text = "${device.get(parametr)}"
-        text2.layoutParams = TableRow.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT, 1.0f)
-        tableRow.addView(text2)
-        table.addView(tableRow);
-    }
-
-    fun addRowHeader(table: TableLayout, header: String)
-    {
-        val tableRow = TableRow(this)
-        tableRow.layoutParams = ViewGroup.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
-        val text = TextView(this)
-        text.textAlignment = TEXT_ALIGNMENT_CENTER
-        text.text = header
-        tableRow.addView(text)
-        table.addView(tableRow);
     }
 
     fun startMainActivity()
@@ -227,7 +225,14 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback {
         startActivity(intent)
     }
 
-    @WorkerThread
+    fun startProfileActivity(view: View)
+    {
+        val intent =  Intent(this,ProfileActivity::class.java)
+        intent.putExtra("token", token)
+        startActivity(intent)
+    }
+
+  /*  @WorkerThread
     fun GetToken():String
     {
         val client = OkHttpClient()
@@ -240,7 +245,7 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback {
         val request = Request.Builder()
             .url("https://smartecosystems.petrsu.ru/api/v1/token")
             .post(requestBody.toRequestBody(MEDIA_TYPE))
-            .header("Accept", "application/json, text/plain, */*")
+            .header("Accept", "application/json, text/plain")
             .header("Accept-Language", "en-US,en")
             .header("Connection", "keep-alive")
             .header("Content-Type", "application/json")
@@ -268,7 +273,7 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback {
             Log.d("Token","token = ${token}")
         }
         return token
-    }
+    }*/
 
     @WorkerThread
     fun GetDevices(token: String)
@@ -305,10 +310,16 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback {
 
             listOfDevices= result.get("devices") as MutableList<Map<String, Any?>>
             mapOfDeviceParameters = result.get("deviceParameters") as MutableMap<String, Map<String, Any?>>
-
         }
+    }
 
-        Log.d("get devices", "Success")
+    fun DrawDevicesOnMap()
+    {
+        if(!this::clusterManager.isInitialized)
+        {
+            Log.d("Error","Problem with google Maps: clusterManager is not isInitialized!")
+            throw Exception("Problem with google Maps: clusterManager is not isInitialized!")
+        }
         Handler(Looper.getMainLooper()).post{
             var index: Int = 0
             for (device in listOfDevices)
@@ -321,4 +332,6 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback {
             }
         }
     }
+
+
 }

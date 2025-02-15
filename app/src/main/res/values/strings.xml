@@ -15,4 +15,12 @@
     <string name="repeat_password_str">Повторить пароль*</string>
     <string name="close">Закрыть</string>
     <string name="to_register">Зарегистрироваться</string>
+
+    <string-array name="account_section_names">
+        <item>Аккаунт</item>
+        <item>Управление устройствами</item>
+    </string-array>
+
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
 </resources>
