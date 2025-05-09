@@ -7,10 +7,11 @@ import android.widget.Button
 import android.widget.TextView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.recyclerview.widget.RecyclerView
+import com.example.ecosystems.DataClasses.Device
 
 import com.example.ecosystems.DeviceDataTable.showDataWindow
 
-class DeviceAdapter(private val deviceList: MutableList<Device>,private val listOfDevices: MutableList<Map<String, Any?>>,
+class DeviceAdapter(private val deviceList: MutableList<Device>, private val mapOfDevices: MutableMap<Int, Map<String, Any?>>,
                     private val mapOfDeviceParameters: MutableMap<String, Map<String, Any?>>,
                     private val listOfDeviceParametertsNames: Map<String, String>, ):RecyclerView.Adapter<DeviceAdapter.DeviceViewHolder>() {
 
@@ -41,7 +42,7 @@ class DeviceAdapter(private val deviceList: MutableList<Device>,private val list
             notifyItemChanged(position)
         }
         holder.aboutDeviceButton.setOnClickListener {
-            showDataWindow(currentItem.index, listOfDevices, mapOfDeviceParameters,listOfDeviceParametertsNames, holder.itemView.context)
+            showDataWindow(currentItem.deviceId, mapOfDevices, mapOfDeviceParameters,listOfDeviceParametertsNames, holder.itemView.context)
         }
     }
 

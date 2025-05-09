@@ -16,8 +16,8 @@ import com.example.ecosystems.R
 import com.google.android.material.chip.ChipGroup
 
 @SuppressLint("SetTextI18n")
-fun showDataWindow(index: Int, listOfDevices: MutableList<Map<String, Any?>>,
-                   mapOfDeviceParameters: MutableMap<String, Map<String, Any?>>,listOfDeviceParametertsNames: Map<String, String>, view: Context)
+fun showDataWindow(deviceId: Int, mapOfDevices: MutableMap<Int, Map<String, Any?>>,
+                   mapOfDeviceParameters: MutableMap<String, Map<String, Any?>>, listOfDeviceParametertsNames: Map<String, String>, view: Context)
 {
     val layoutInflater = LayoutInflater.from(view)
     val dialog = layoutInflater.inflate(R.layout.device_data, null)
@@ -32,7 +32,7 @@ fun showDataWindow(index: Int, listOfDevices: MutableList<Map<String, Any?>>,
 
     val table = dialog.findViewById<TableLayout>(R.id.dataTable)
 
-    val device = listOfDevices.get(index)
+    val device = mapOfDevices.getValue(deviceId)
     addRowHeader(table,"Описание устройства", view)
     addRow(table, "name",device,listOfDeviceParametertsNames, view)
     addRow(table, "location_description",device,listOfDeviceParametertsNames, view)

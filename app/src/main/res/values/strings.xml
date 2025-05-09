@@ -21,6 +21,22 @@
         <item>Управление устройствами</item>
     </string-array>
 
+    <string-array name="device_type_names">
+        <item>Метеостанция</item>
+        <item>Сейсмостанция</item>
+        <item>Модуль</item>
+        <item>Фотоловушка</item>
+        <item>Аудиоулавливатель</item>
+        <item>Модуль ИИ</item>
+        <item>Метеостанция Сокол</item>
+        <item>WiFiMeteo станция</item>
+        <item>Метеостанция Гидрометцентра России</item>
+        <item>Модуль ИИ пожары</item>
+        <item>Метеостанция М</item>
+        <item>Пульсационная станция</item>
+        <item>Пульсационная станция V2</item>
+    </string-array>
+
     <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
 </resources>

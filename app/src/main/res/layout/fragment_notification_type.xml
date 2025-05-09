@@ -4,34 +4,21 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".ProfileActivityFragments.SettingsFragment">
+    tools:context=".DeviceInfoActivityFragments.NotificationTypeFragment">
 
-
+    <!-- TODO: Update blank fragment layout -->
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
-        <androidx.appcompat.widget.SwitchCompat
-            android:id="@+id/sendEmailSwitch"
+        <TextView
+            android:id="@+id/textView14"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="10dp"
-            android:layout_marginTop="12dp"
-            android:checked="false"
-            android:theme="@style/MySwitch"
-            app:layout_constraintEnd_toStartOf="@+id/textView6"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
-
-        <TextView
-            android:id="@+id/textView6"
-            android:layout_width="305dp"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:layout_marginEnd="10dp"
-            android:text="Отправлять EMail, когда от устройства нет данных"
-            android:textSize="16sp"
+            android:layout_marginTop="16dp"
+            android:text="Нет оповещений"
             app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
         <View
@@ -45,25 +32,23 @@
 
         <androidx.appcompat.widget.AppCompatButton
             android:id="@+id/backButton2"
+            app:cornerRadius="1dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:strokeColor="@color/black"
             android:layout_width="wrap_content"
             android:layout_height="48dp"
             android:layout_marginStart="16dp"
             android:layout_marginBottom="16dp"
             android:background="@drawable/back_button"
-            android:onClick="startMapActivity"
+            android:onClick="startPersonalAccountActivity"
             android:paddingStart="5dp"
             android:paddingEnd="5dp"
             android:text="@string/close"
-            android:textColor="@color/black"
-            app:cornerRadius="1dp"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:strokeColor="@color/black" />
+            android:textColor="@color/black" />
 
         <androidx.appcompat.widget.AppCompatButton
             android:id="@+id/editPasswordButton"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
             android:layout_width="wrap_content"
             android:layout_height="48dp"
             android:layout_marginEnd="16dp"
@@ -71,10 +56,10 @@
             android:background="@drawable/back_button_registration"
             android:paddingStart="5dp"
             android:paddingEnd="5dp"
-            android:text="Сохранить"
-            android:textColor="@color/white" />
-
+            android:text="Добавить"
+            android:textColor="@color/white"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
     </androidx.constraintlayout.widget.ConstraintLayout>
-
 
 </FrameLayout>

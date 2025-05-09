@@ -1,49 +1,35 @@
 package com.example.ecosystems
 
-import android.annotation.SuppressLint
-import android.app.Dialog
-import android.content.Context
 import android.content.Intent
-import android.graphics.Color
-import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.view.View
-import android.view.ViewGroup
-import android.widget.Button
 import android.widget.ImageButton
-import android.widget.SearchView
-import android.widget.TableLayout
-import android.widget.TableRow
-import android.widget.TextView
 import android.widget.Toast
 import androidx.annotation.WorkerThread
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.example.ecosystems.DataClasses.Device
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.LatLngBounds
-import com.google.android.material.chip.ChipGroup.LayoutParams
-import com.google.android.material.chip.ChipGroup.TEXT_ALIGNMENT_CENTER
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.google.maps.android.clustering.ClusterItem
 import com.google.maps.android.clustering.ClusterManager
-import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
 import java.util.Locale
 
 import com.example.ecosystems.DeviceDataTable.showDataWindow
+import java.io.Serializable
 
 class MapActivity : AppCompatActivity(), OnMapReadyCallback {
     inner class MyMarker(pos: LatLng, title: String) : ClusterItem
@@ -86,6 +72,10 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback {
    //  recycle view
     private lateinit var devicesRecyclerView: RecyclerView
     private var devicesList: MutableList<Device> = mutableListOf()
+
+    //словарь, где ключ - параметр device_id,а значение сам словарь с параметрами этого устройства (в том числе и id)
+    private var mapOfDevices: MutableMap<Int, Map<String, Any?>> = mutableMapOf()
+
     private var tempDevicesList: MutableList<Device> = mutableListOf()
     private lateinit var token:String
 
@@ -110,9 +100,11 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback {
                     val name = device.get("name").toString()
                     val location = device.get("location_description").toString()
                     val lastUpdate = device.get("last_update_datetime").toString()
-                    val deviceItem = Device(index, name, location, lastUpdate)
+                    val deviceItem = Device(device.get("device_id").toString().toDouble().toInt(), name, location, lastUpdate)
                     devicesList.add(deviceItem)
                     index += 1
+
+                    mapOfDevices.put(device.get("device_id").toString().toDouble().toInt(), device)
                 }
                 Log.d("get devices", "Success")
                 while(!this::clusterManager.isInitialized)
@@ -145,8 +137,8 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback {
         mMap.isBuildingsEnabled = true
         clusterManager = ClusterManager(this, mMap)
         clusterManager.setOnClusterItemClickListener { marker ->
-            val index = marker.title.toInt()
-            showDataWindow(index, listOfDevices, mapOfDeviceParameters,listOfDeviceParametertsNames, this)
+            val deviceId = marker.title.toInt()
+            showDataWindow(deviceId, mapOfDevices, mapOfDeviceParameters,listOfDeviceParametertsNames, this)
             true
         }
         mMap.setOnCameraIdleListener(clusterManager)
@@ -172,7 +164,7 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback {
         devicesRecyclerView = findViewById(R.id.devices_recycler_view)
         devicesRecyclerView.layoutManager = LinearLayoutManager(this)
         tempDevicesList.addAll(devicesList)
-        val deviceAdapter: DeviceAdapter = DeviceAdapter(tempDevicesList, listOfDevices, mapOfDeviceParameters, listOfDeviceParametertsNames)
+        val deviceAdapter: DeviceAdapter = DeviceAdapter(tempDevicesList, mapOfDevices, mapOfDeviceParameters, listOfDeviceParametertsNames)
         devicesRecyclerView.adapter = deviceAdapter
 
         //поиск
@@ -227,53 +219,15 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback {
 
     fun startProfileActivity(view: View)
     {
-        val intent =  Intent(this,ProfileActivity::class.java)
-        intent.putExtra("token", token)
+        val intent =  Intent(this,PersonalAccount::class.java)
+        //intent.putExtra("token", token)
+        val bundle = Bundle()
+        //bundle.putSerializable("listOfDevices", listOfDevices as Serializable)
+        bundle.putSerializable("mapOfDevices", mapOfDevices as Serializable)
+        bundle.putString("token",token)
+        intent.putExtras(bundle)
         startActivity(intent)
     }
-
-  /*  @WorkerThread
-    fun GetToken():String
-    {
-        val client = OkHttpClient()
-
-        var token:String = ""
-
-        val MEDIA_TYPE = "application/json".toMediaType()
-        val requestBody = "{\"login\":\"admin\",\"password\":\"PetrSU2022*\"}"
-
-        val request = Request.Builder()
-            .url("https://smartecosystems.petrsu.ru/api/v1/token")
-            .post(requestBody.toRequestBody(MEDIA_TYPE))
-            .header("Accept", "application/json, text/plain")
-            .header("Accept-Language", "en-US,en")
-            .header("Connection", "keep-alive")
-            .header("Content-Type", "application/json")
-            .build()
-
-        client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful)
-            {
-                Log.d("Error","Unexpected code $response ${response.message} ${response.code} ${response.body}")
-                throw IOException("Unexpected code ${response.message}")
-            }
-            val requestResult = response.body!!.string()
-
-            val gson = Gson()
-            val mapAdapter = gson.getAdapter(object: TypeToken<Map<String, Any?>>() {})
-            val result: Map<String, Any?> = mapAdapter.fromJson(requestResult)
-
-            if(result.get("result") != "ok")
-            {
-                Log.d("Error","Error while making request: result.get")
-                throw Exception("Error while making request: result.get")
-            }
-
-            token = result.get("access_token").toString()
-            Log.d("Token","token = ${token}")
-        }
-        return token
-    }*/
 
     @WorkerThread
     fun GetDevices(token: String)
@@ -318,20 +272,13 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback {
         if(!this::clusterManager.isInitialized)
         {
             Log.d("Error","Problem with google Maps: clusterManager is not isInitialized!")
-            throw Exception("Problem with google Maps: clusterManager is not isInitialized!")
         }
         Handler(Looper.getMainLooper()).post{
-            var index: Int = 0
-            for (device in listOfDevices)
-            {
+            mapOfDevices.forEach { deviceId, device ->
                 val point = LatLng(device.get("latitude") as Double, device.get("longitude") as Double)
-                val offsetItem = MyMarker(point, index.toString())
+                val offsetItem = MyMarker(point, deviceId.toString())
                 clusterManager.addItem(offsetItem)
-                //mMap.addMarker(MarkerOptions().position(point).title(index.toString()))
-                index += 1
             }
         }
     }
-
-
 }

@@ -64,13 +64,15 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/editTextLogin" />
 
-    <Button
+    <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/logInButton"
         android:layout_width="157dp"
         android:layout_height="50dp"
         android:layout_marginTop="30dp"
         android:backgroundTint="@color/button_color"
         android:text="@string/log_in"
+        android:textColor="#FFFFFF"
+        android:background="@drawable/rounded_corners_button"
         app:layout_constraintBottom_toTopOf="@+id/textView2"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -91,12 +93,15 @@
         app:layout_constraintHorizontal_bias="0.515"
         app:layout_constraintStart_toStartOf="parent" />
 
-    <Button
+    <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/registrationButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginBottom="36dp"
+        android:background="@drawable/rounded_corners_button"
         android:backgroundTint="@color/white"
+        android:paddingStart="15dp"
+        android:paddingEnd="15dp"
         android:text="@string/to_register_u"
         android:textAlignment="center"
         android:textAllCaps="false"
