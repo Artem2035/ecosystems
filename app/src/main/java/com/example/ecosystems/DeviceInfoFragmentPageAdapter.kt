@@ -16,7 +16,7 @@ import java.io.Serializable
 
 
 class DeviceInfoFragmentPageAdapter(fragmentManager: FragmentManager, lifecycle: Lifecycle,
-                                    val currentDevice: Map<String, Any?>, val token: String):
+                                    val currentDevice: Map<String, Any?>):
     FragmentStateAdapter(fragmentManager, lifecycle) {
 
     lateinit var fragment: Fragment
@@ -30,7 +30,6 @@ class DeviceInfoFragmentPageAdapter(fragmentManager: FragmentManager, lifecycle:
             fragment = DeviceInfoFragment()
             val bundle = Bundle()
             bundle.putSerializable("currentDevice", currentDevice as Serializable)
-            bundle.putString("token", token)
             fragment.arguments = bundle
             return fragment
         }
@@ -38,7 +37,6 @@ class DeviceInfoFragmentPageAdapter(fragmentManager: FragmentManager, lifecycle:
             fragment = NotificationTypeFragment()
             val bundle = Bundle()
             bundle.putSerializable("currentDevice", currentDevice as Serializable)
-            bundle.putString("token", token)
             fragment.arguments = bundle
             return fragment
         }
@@ -46,7 +44,6 @@ class DeviceInfoFragmentPageAdapter(fragmentManager: FragmentManager, lifecycle:
             fragment = NotificationsFragment()
             val bundle = Bundle()
             bundle.putSerializable("currentDevice", currentDevice as Serializable)
-            bundle.putString("token", token)
             fragment.arguments = bundle
             return fragment
         }

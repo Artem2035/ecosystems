@@ -1,5 +1,7 @@
 package com.example.ecosystems.ProfileActivityFragments
 
+import SecurePersonalAccountManager
+import SecureTokenManager
 import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
@@ -12,14 +14,17 @@ import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.widget.AppCompatButton
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import com.example.ecosystems.MainActivity
 import com.example.ecosystems.R
+import com.example.ecosystems.utils.isInternetAvailable
 import java.io.IOException
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import com.google.gson.Gson
+import kotlinx.coroutines.launch
 
 
 /**
@@ -34,10 +39,11 @@ class ProfileInfoFragment : Fragment() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        arguments?.let {
-            token = it.getString("token").toString()
-            personalAccountData = (it.getSerializable ("personalAccountData") as? MutableMap<String, Any?>)!!
-        }
+        val personalAccountManager = SecurePersonalAccountManager(requireContext())
+        // Прочитать токен
+        val tokenManager = SecureTokenManager(requireContext())
+        token = tokenManager.loadToken()!!
+        personalAccountData = personalAccountManager.loadData()
     }
 
     override fun onCreateView(
@@ -65,6 +71,15 @@ class ProfileInfoFragment : Fragment() {
         val saveChangesButton: AppCompatButton = view.findViewById(R.id.editPasswordButton)
 
         saveChangesButton.setOnClickListener {
+            if(!requireContext().isInternetAvailable()){
+                Handler(Looper.getMainLooper()).post{
+                    val message = Toast.makeText(view.context,"Недоступно в офлайн режиме!",
+                        Toast.LENGTH_SHORT)
+                    message.show()
+                }
+                return@setOnClickListener
+            }
+
             if(saveChanges) {
                 saveChangesButton.setText("Изменить")
                 saveChanges= false
@@ -123,7 +138,6 @@ class ProfileInfoFragment : Fragment() {
         //val jsonPersonalAccountData = Gson().toJson(personalAccountData)
         val requestBody = "{\"user\": ${Gson().toJson(personalAccountData)}}"
 
-        Log.d("saveProfileChanes", token)
         Log.d("saveProfileChanes", requestBody)
         val request = Request.Builder()
             .url("https://smartecosystems.petrsu.ru/api/v1/profile")

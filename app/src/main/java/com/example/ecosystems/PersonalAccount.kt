@@ -1,5 +1,7 @@
 package com.example.ecosystems
 
+import SecurePersonalAccountManager
+import SecureTokenManager
 import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
@@ -12,9 +14,12 @@ import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import com.example.ecosystems.DataClasses.Device
+import com.example.ecosystems.utils.isInternetAvailable
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.Serializable
@@ -32,30 +37,46 @@ class PersonalAccount : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_personal_account)
 
+        val personalAccountManager = SecurePersonalAccountManager(this)
+        // Прочитать токен
+        val tokenManager = SecureTokenManager(this)
+        token = tokenManager.loadToken()!!
+
         val bundle = intent.extras
-        token = bundle?.getString("token").toString()
         mapOfDevices = (bundle?.getSerializable("mapOfDevices") as? MutableMap<Int, Map<String, Any?>>)!!
 
         val showDevicesManagmentFragment = bundle.getBoolean("showDevicesManagmentFragment", false)
 
-        val thread =Thread {
-            try {
-                Log.d("Get profile data","profile")
-                getPersonalAccountData(token)
-            }
-            catch (exception: Exception)
-            {
-                Log.d("Error","Unexpected code ${exception.message}")
-                Handler(Looper.getMainLooper()).post{
-                    val message = Toast.makeText(this,"Unexpected code ${exception.message}",Toast.LENGTH_SHORT)
-                    message.show()
-                    val intent =  Intent(this,MainActivity::class.java)
-                    startActivity(intent)
+        if(isInternetAvailable()){
+            val thread =Thread {
+                try {
+                    Log.d("Get profile data","profile")
+                    getPersonalAccountData(token)
+                    Log.d("personalAccountData1", personalAccountData.toString())
+                    personalAccountManager.saveData(personalAccountData)
+                }
+                catch (exception: Exception)
+                {
+                    Log.d("Error","Unexpected code ${exception.message}")
+                    Handler(Looper.getMainLooper()).post{
+                        val message = Toast.makeText(this,"Unexpected code ${exception.message}",Toast.LENGTH_SHORT)
+                        message.show()
+                        val intent =  Intent(this,MainActivity::class.java)
+                        startActivity(intent)
+                    }
                 }
             }
+            thread.start()
+            thread.join() // Основной поток ждет завершения фонового потока
+        }else{
+            personalAccountData = personalAccountManager.loadData()
+            Log.d("personalAccountData офлайн",personalAccountData.toString())
+            Handler(Looper.getMainLooper()).post{
+                val message = Toast.makeText(this,"Офлайн режим!",
+                    Toast.LENGTH_SHORT)
+                message.show()
+            }
         }
-        thread.start()
-        thread.join() // Основной поток ждет завершения фонового потока
 
         val accountSectionsAutoCompleteTextView = findViewById<AutoCompleteTextView>(R.id.accountSectionsAutoCompleteTextView)
         val accountSectionNames = resources.getStringArray(R.array.account_section_names)
@@ -88,7 +109,6 @@ class PersonalAccount : AppCompatActivity() {
     fun startMapActivity(view: View)
     {
         val intent =  Intent(this,MapActivity::class.java)
-        intent.putExtra("token", token)
         startActivity(intent)
     }
 
@@ -105,13 +125,7 @@ class PersonalAccount : AppCompatActivity() {
             bundle.putSerializable("mapOfDevices", mapOfDevices as Serializable)
             fragment.arguments = bundle
         }
-        if(fragment is ProfileActivityLayoutFragment)
-        {
-            val bundle = Bundle()
-            bundle.putString("token", token)
-            bundle.putSerializable("personalAccountData", personalAccountData as Serializable)
-            fragment.arguments = bundle
-        }
+
         fragmentTransaction.replace(R.id.frame_layout, fragment)
         fragmentTransaction.commit()
     }
@@ -148,7 +162,6 @@ class PersonalAccount : AppCompatActivity() {
                 throw Exception("Error while making request: result.get")
             }
             personalAccountData = result.get("user") as MutableMap<String, Any?>
-            Log.d("personalAccountData1", personalAccountData.toString())
         }
     }
 }

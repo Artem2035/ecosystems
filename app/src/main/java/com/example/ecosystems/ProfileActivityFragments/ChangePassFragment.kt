@@ -1,5 +1,7 @@
 package com.example.ecosystems.ProfileActivityFragments
 
+import SecurePersonalAccountManager
+import SecureTokenManager
 import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
@@ -12,10 +14,13 @@ import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.widget.AppCompatButton
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import com.example.ecosystems.MainActivity
 import com.example.ecosystems.R
+import com.example.ecosystems.utils.isInternetAvailable
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -33,10 +38,13 @@ class ChangePassFragment : Fragment() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        arguments?.let {
-            token = it.getString("token").toString()
-            personalAccountData = (it.getSerializable ("personalAccountData") as? MutableMap<String, Any?>)!!
-        }
+
+        val personalAccountManager = SecurePersonalAccountManager(requireContext())
+        // Прочитать токен
+        val tokenManager = SecureTokenManager(requireContext())
+        token = tokenManager.loadToken()!!
+        Log.d("personalAccountManager","${personalAccountManager.loadData()}")
+        personalAccountData = personalAccountManager.loadData()
     }
 
     override fun onCreateView(
@@ -52,8 +60,19 @@ class ChangePassFragment : Fragment() {
         val editNewPass = view.findViewById<EditText>(R.id.editNewPass)
         val editNewPassRepeat = view.findViewById<EditText>(R.id.editNewPassRepeat)
 
+
         val changePasswordButton: AppCompatButton = view.findViewById(R.id.editPasswordButton)
         changePasswordButton.setOnClickListener {
+
+            if(!requireContext().isInternetAvailable()){
+                Handler(Looper.getMainLooper()).post{
+                    val message = Toast.makeText(view.context,"Недоступно в офлайн режиме!",
+                        Toast.LENGTH_SHORT)
+                    message.show()
+                }
+                return@setOnClickListener
+            }
+
             if(editCurrentPass.text.isNullOrEmpty() || editNewPass.text.isNullOrEmpty() ||
                 editNewPassRepeat.text.isNullOrEmpty() ){
                 Handler(Looper.getMainLooper()).post{
@@ -63,7 +82,6 @@ class ChangePassFragment : Fragment() {
                 }
                 return@setOnClickListener
             }
-
             val thread =Thread {
                 try {
                     if(editNewPass.text.toString() != editNewPassRepeat.text.toString()){

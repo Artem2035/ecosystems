@@ -1,6 +1,11 @@
 package com.example.ecosystems
 
+import SecureTokenManager
+import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -8,65 +13,41 @@ import android.util.Log
 import android.view.View
 import android.widget.ImageButton
 import android.widget.Toast
+import androidx.annotation.DrawableRes
 import androidx.annotation.WorkerThread
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.ecosystems.DataClasses.Device
-import com.google.android.gms.maps.CameraUpdateFactory
-import com.google.android.gms.maps.GoogleMap
-import com.google.android.gms.maps.OnMapReadyCallback
-import com.google.android.gms.maps.SupportMapFragment
-import com.google.android.gms.maps.model.CameraPosition
-import com.google.android.gms.maps.model.LatLng
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import com.google.maps.android.clustering.ClusterItem
-import com.google.maps.android.clustering.ClusterManager
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.IOException
 import java.util.Locale
 
 import com.example.ecosystems.DeviceDataTable.showDataWindow
+import com.example.ecosystems.data.local.SecureDevicesParametersManager
+import com.example.ecosystems.utils.isInternetAvailable
+import com.yandex.mapkit.Animation
+import com.yandex.mapkit.MapKitFactory
+import com.yandex.mapkit.geometry.Point
+import com.yandex.mapkit.map.CameraPosition
+import com.yandex.mapkit.map.Cluster
+import com.yandex.mapkit.map.ClusterListener
+import com.yandex.mapkit.map.ClusterTapListener
+import com.yandex.mapkit.map.ClusterizedPlacemarkCollection
+import com.yandex.mapkit.map.MapObjectTapListener
+import com.yandex.mapkit.map.TextStyle
+import com.yandex.mapkit.mapview.MapView
+import com.yandex.runtime.image.ImageProvider
 import java.io.Serializable
 
-class MapActivity : AppCompatActivity(), OnMapReadyCallback {
-    inner class MyMarker(pos: LatLng, title: String) : ClusterItem
-    {
+class MapActivity : AppCompatActivity()  {
 
-        private val position: LatLng
-        private val title: String
-        private val snippet: String = ""
-
-        override fun getPosition(): LatLng {
-            return position
-        }
-
-        override fun getTitle(): String {
-            return title
-        }
-
-        override fun getSnippet(): String {
-            return snippet
-        }
-
-        fun getZIndex(): Float {
-            return 0f
-        }
-
-        init {
-            position = pos
-            this.title = title
-        }
-    }
-
-    private lateinit var clusterManager: ClusterManager<MyMarker>
-    lateinit var mMap: GoogleMap
-
-    private var mapFragment: SupportMapFragment? = null
     private var currentCameraPosition: CameraPosition = CameraPosition(
-        LatLng(57.907,36.58),
+        Point(57.907,36.58),
         4.67F,0.0F,0.0F)
 
    //  recycle view
@@ -84,67 +65,70 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback {
         "latitude" to "Широта","longitude" to "Долгота")
     var listOfDevices: MutableList<Map<String, Any?>> = mutableListOf()
     var mapOfDeviceParameters: MutableMap<String, Map<String, Any?>> = mutableMapOf()
+    var mapOfDevicesDeviceParameters: MutableMap<String, MutableMap<*, *>> = mutableMapOf()
+
+    private lateinit var mapView: MapView
+    private lateinit var clusterizedCollection: ClusterizedPlacemarkCollection
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_map)
+        mapView = findViewById(R.id.map)
+        mapView.mapWindow.map.move(currentCameraPosition)
 
-        Thread {
-            try {
-                Log.d("Get devices","devices")
+        // Прочитать токен
+        val tokenManager = SecureTokenManager(this)
+        token = tokenManager.loadToken()!!
+        val devicesManager = SecureDevicesParametersManager(this)
+        val devicesManagerData = devicesManager.loadData()
 
-                token = intent.getStringExtra("token").toString()
-                GetDevices(token)
-                var index: Int = 0
-                for (device in listOfDevices){
-                    val name = device.get("name").toString()
-                    val location = device.get("location_description").toString()
-                    val lastUpdate = device.get("last_update_datetime").toString()
-                    val deviceItem = Device(device.get("device_id").toString().toDouble().toInt(), name, location, lastUpdate)
-                    devicesList.add(deviceItem)
-                    index += 1
+        if(isInternetAvailable()){
+            Thread {
+                try {
+                    Log.d("Get devices","devices")
+                    GetDevices(token)
+                    var index: Int = 0
+                    for (device in listOfDevices){
+                        val name = device.get("name").toString()
+                        val location = device.get("location_description").toString()
+                        val lastUpdate = device.get("last_update_datetime").toString()
+                        val deviceItem = Device(device.get("device_id").toString().toDouble().toInt(), name, location, lastUpdate)
+                        devicesList.add(deviceItem)
+                        index += 1
 
-                    mapOfDevices.put(device.get("device_id").toString().toDouble().toInt(), device)
+                        mapOfDevices.put(device.get("device_id").toString().toDouble().toInt(), device)
+                    }
+
+                    mapOfDevicesDeviceParameters.put("mapOfDevices",mapOfDevices)
+                    mapOfDevicesDeviceParameters.put("mapOfDeviceParameters",mapOfDeviceParameters)
+//                    Log.d("mdevices", mapOfDevicesDeviceParameters.toString())
+                    devicesManager.saveData(mapOfDevicesDeviceParameters)
+                    DrawDevicesOnMap()
+
                 }
-                Log.d("get devices", "Success")
-                while(!this::clusterManager.isInitialized)
-                    Log.d("clusterManager", "Getting Initialized")
-                DrawDevicesOnMap()
-            }
-            catch (exception: Exception)
-            {
-                Log.d("Error","Unexpected code ${exception.message}")
-                Handler(Looper.getMainLooper()).post{
-                    val message = Toast.makeText(this,"Unexpected code ${exception.message}",Toast.LENGTH_SHORT)
-                    message.show()
-                    startMainActivity()
+                catch (exception: Exception)
+                {
+                    Log.d("Error","Unexpected code ${exception.message}")
+                    Handler(Looper.getMainLooper()).post{
+                        val message = Toast.makeText(this,"Unexpected code ${exception.message}",Toast.LENGTH_SHORT)
+                        message.show()
+                        startMainActivity()
+                    }
                 }
-            }
-            //Do some Network Request
-        }.start()
-
-
-        // Инициализируем MapFragment только если он еще не был добавлен
-        mapFragment = supportFragmentManager.findFragmentById(R.id.map) as? SupportMapFragment
-            ?: SupportMapFragment.newInstance().apply {
-                supportFragmentManager.beginTransaction().replace(R.id.map, this).commit()
-            }
-
-        mapFragment?.getMapAsync(this)
-    }
-    override fun onMapReady(googleMap: GoogleMap) {
-        mMap = googleMap
-        mMap.isBuildingsEnabled = true
-        clusterManager = ClusterManager(this, mMap)
-        clusterManager.setOnClusterItemClickListener { marker ->
-            val deviceId = marker.title.toInt()
-            showDataWindow(deviceId, mapOfDevices, mapOfDeviceParameters,listOfDeviceParametertsNames, this)
-            true
+                //Do some Network Request
+            }.start()
         }
-        mMap.setOnCameraIdleListener(clusterManager)
-        mMap.setOnMarkerClickListener(clusterManager)
-
-        mMap.moveCamera(CameraUpdateFactory.newCameraPosition(currentCameraPosition))
+        else{
+            Thread {
+                if(devicesManagerData.get("mapOfDevices") != null &&
+                    devicesManagerData.get("mapOfDeviceParameters") != null  ){
+                    mapOfDevices = devicesManagerData.get("mapOfDevices") as MutableMap<Int, Map<String, Any?>>
+                    mapOfDeviceParameters = devicesManagerData.get("mapOfDeviceParameters") as MutableMap<String, Map<String, Any?>>
+                    Log.d("params","${devicesManagerData.get("mapOfDevices")}")
+                    DrawDevicesOnMap()
+                }
+            }.start()
+        }
     }
 
     fun closeButton(view: View) {
@@ -152,13 +136,7 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     fun showListOfDevices(view: View){
-        currentCameraPosition = mMap.cameraPosition
-
-        // Удаляем фрагмент перед переключением макета
-        supportFragmentManager.findFragmentById(R.id.map)?.let {
-            supportFragmentManager.beginTransaction().remove(it).commitNowAllowingStateLoss()
-        }
-
+//        currentCameraPosition = mMap.cameraPosition
         setContentView(R.layout.activity_map_list_of_devices)
 
         devicesRecyclerView = findViewById(R.id.devices_recycler_view)
@@ -196,18 +174,10 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback {
         val button = findViewById<ImageButton>(R.id.showMap)
         button.setOnClickListener {
             setContentView(R.layout.activity_map)
-            mapFragment = supportFragmentManager.findFragmentById(R.id.map) as? SupportMapFragment
-                ?: SupportMapFragment.newInstance().apply {
-                    supportFragmentManager.beginTransaction().replace(R.id.map, this).commit()
-                }
-            mapFragment?.getMapAsync(this)
             Log.d("test",listOfDevices.toString())
 
             Log.d("get devices", "Success")
-            Log.d("map23",currentCameraPosition.toString())
-
             DrawDevicesOnMap()
-            //mMap.moveCamera(CameraUpdateFactory.newCameraPosition(currentCameraPosition))
         }
     }
 
@@ -220,12 +190,15 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback {
     fun startProfileActivity(view: View)
     {
         val intent =  Intent(this,PersonalAccount::class.java)
-        //intent.putExtra("token", token)
         val bundle = Bundle()
         //bundle.putSerializable("listOfDevices", listOfDevices as Serializable)
         bundle.putSerializable("mapOfDevices", mapOfDevices as Serializable)
-        bundle.putString("token",token)
         intent.putExtras(bundle)
+        startActivity(intent)
+    }
+
+    fun startForestTaxationActivity(view: View){
+        val intent =  Intent(this,ForestTaxationActivity::class.java)
         startActivity(intent)
     }
 
@@ -269,16 +242,91 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback {
 
     fun DrawDevicesOnMap()
     {
-        if(!this::clusterManager.isInitialized)
-        {
-            Log.d("Error","Problem with google Maps: clusterManager is not isInitialized!")
-        }
-        Handler(Looper.getMainLooper()).post{
-            mapOfDevices.forEach { deviceId, device ->
-                val point = LatLng(device.get("latitude") as Double, device.get("longitude") as Double)
-                val offsetItem = MyMarker(point, deviceId.toString())
-                clusterManager.addItem(offsetItem)
+        runOnUiThread{
+            val bitmap = getBitmapFromVectorDrawable(this, R.drawable.map_marker)
+            val imageProvider = ImageProvider.fromBitmap(bitmap)
+            // Создаём коллекцию с кластеризацией
+            clusterizedCollection = mapView.mapWindow.map.mapObjects.addClusterizedPlacemarkCollection(object : ClusterListener {
+                override fun onClusterAdded(cluster: Cluster) {
+                    // Устанавливаем иконку кластера
+                    cluster.appearance.setIcon(imageProvider)
+                    // Можно добавить текст (кол-во элементов)
+                    cluster.appearance.setText(cluster.size.toString())
+
+                    // Дополнительно задаём стиль текста (иначе он не виден!)
+                    cluster.appearance.setTextStyle(
+                        TextStyle().apply {
+                            size = 12f
+                            color = Color.WHITE
+                            placement = TextStyle.Placement.CENTER
+                            outlineColor = Color.BLACK
+                            outlineWidth = 2f
+                        }
+                    )
+
+                    // Клик по кластеру — увеличиваем zoom
+                    cluster.addClusterTapListener(object : ClusterTapListener {
+                        override fun onClusterTap(cluster: Cluster): Boolean {
+                            val currentCamera = mapView.mapWindow.map.cameraPosition
+                            mapView.mapWindow.map.move(
+                                CameraPosition(
+                                    cluster.appearance.geometry,
+                                    currentCamera.zoom + 1.5f,
+                                    0f,
+                                    0f
+                                )
+                            )
+                            return true
+                        }
+                    })
+                }
+            })
+
+            // Обработка нажатия конкретно на объекты (маркеры)
+            val globalListener = MapObjectTapListener { mapObject, point ->
+                val deviceId = mapObject.userData
+                if (deviceId != null) {
+                    //Toast.makeText(this, "Клик по объекту: $deviceId", Toast.LENGTH_SHORT).show()
+                    showDataWindow(deviceId.toString().toInt(), mapOfDevices, mapOfDeviceParameters,listOfDeviceParametertsNames, this)
+                }
+                true
             }
+
+            mapOfDevices.forEach { deviceId, device ->
+                clusterizedCollection.addPlacemark().apply {
+                    geometry = Point(device.get("latitude") as Double, device.get("longitude") as Double)
+                    setUserData(deviceId.toString())
+                    setIcon(imageProvider)
+                    addTapListener(globalListener)
+                }
+            }
+            // Запускаем кластеризацию
+            clusterizedCollection.clusterPlacemarks(60.0, 15)
         }
     }
+
+    override fun onStart() {
+        super.onStart()
+        MapKitFactory.getInstance().onStart()
+        mapView.onStart()
+    }
+
+    override fun onStop() {
+        mapView.onStop()
+        MapKitFactory.getInstance().onStop()
+        super.onStop()
+    }
+}
+
+fun getBitmapFromVectorDrawable(context: Context, @DrawableRes drawableId: Int): Bitmap {
+    val drawable = ContextCompat.getDrawable(context, drawableId)!!
+    val bitmap = Bitmap.createBitmap(
+        drawable.intrinsicWidth,
+        drawable.intrinsicHeight,
+        Bitmap.Config.ARGB_8888
+    )
+    val canvas = Canvas(bitmap)
+    drawable.setBounds(0, 0, canvas.width, canvas.height)
+    drawable.draw(canvas)
+    return bitmap
 }

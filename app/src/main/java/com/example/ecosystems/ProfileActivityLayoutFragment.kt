@@ -1,5 +1,6 @@
 package com.example.ecosystems
 
+import SecureTokenManager
 import android.annotation.SuppressLint
 import android.os.Bundle
 import android.util.Log
@@ -10,8 +11,10 @@ import android.view.ViewGroup
 import android.widget.EditText
 import androidx.appcompat.widget.AppCompatButton
 import androidx.appcompat.widget.SwitchCompat
+import androidx.lifecycle.lifecycleScope
 import androidx.viewpager2.widget.ViewPager2
 import com.google.android.material.tabs.TabLayout
+import kotlinx.coroutines.launch
 
 // TODO: Rename parameter arguments, choose names that match
 // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
@@ -32,9 +35,13 @@ class ProfileActivityLayoutFragment : Fragment() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Прочитать токен
+        val tokenManager = SecureTokenManager(requireContext())
+        token = tokenManager.loadToken()!!
+
         arguments?.let {
             personalAccountData = (it.getSerializable ("personalAccountData") as? MutableMap<String, Any?>)!!
-            token = it.getString("token") as String
         }
     }
 
@@ -47,7 +54,7 @@ class ProfileActivityLayoutFragment : Fragment() {
         tabLayout = view.findViewById(R.id.tabLayout)
         viewPager2 = view.findViewById(R.id.viewPager2)
 
-        val fragmentAdapter = ProfileFragmentPageAdapter(parentFragmentManager,lifecycle, personalAccountData,token)
+        val fragmentAdapter = ProfileFragmentPageAdapter(parentFragmentManager,lifecycle, personalAccountData)
         viewPager2.adapter = fragmentAdapter
 
         tabLayout.addOnTabSelectedListener(object  : TabLayout.OnTabSelectedListener{

@@ -1,45 +1,60 @@
 package com.example.ecosystems
 
+import SecureTokenManager
 import android.content.Intent
+import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.view.View
+import android.widget.Button
+import android.widget.EditText
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.annotation.WorkerThread
 import androidx.constraintlayout.widget.ConstraintLayout
-import com.example.ecosystems.databinding.ActivityMainBinding
+import androidx.lifecycle.lifecycleScope
+import com.example.ecosystems.utils.isInternetAvailable
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
 
-class MainActivity : AppCompatActivity() {
 
-    private lateinit var binding: ActivityMainBinding
+
+class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityMainBinding.inflate(layoutInflater)
-        val view: ConstraintLayout = binding.root
+        setContentView(R.layout.activity_main)
 
-        setContentView(view)
+        var token = ""
+        val tokenManager = SecureTokenManager(this)
 
-        binding.registrationButton.setOnClickListener {
+        if (tokenManager.loadToken() != null) {
+            token = tokenManager.loadToken()!!
+        }
+        val hasToken =  if (!token.isEmpty()) true else false
+        val msg = Toast.makeText(this,"has token ${hasToken}",
+            Toast.LENGTH_SHORT)
+        msg.show()
+        val registrationButton: Button = findViewById(com.example.ecosystems.R.id.registrationButton)
+        registrationButton.setOnClickListener {
             val intent =  Intent(this,RegistrationActivity::class.java)
             startActivity(intent)
         }
 
-        binding.logInButton.setOnClickListener {
+        val logInButton: Button = findViewById(com.example.ecosystems.R.id.logInButton)
+        logInButton.setOnClickListener {
 
-            val login:String = binding.editTextLogin.text.toString()
-            val password:String = binding.editTextPassword.text.toString()
-
+            val login = findViewById<EditText?>(R.id.editTextLogin).text.toString()
+            val password = findViewById<EditText?>(R.id.editTextPassword).text.toString()
 
             if(login.isEmpty() or password.isEmpty())
             {
@@ -48,26 +63,35 @@ class MainActivity : AppCompatActivity() {
                 message.show()
                 return@setOnClickListener
             }
+            if(isInternetAvailable()){
+                Thread {
+                    try {
+                        token = GetToken(login,password)
+                        Log.d("Get devices","devices")
+                        val intent =  Intent(this,MapActivity::class.java)
 
-            Thread {
-                try {
-                    val token = GetToken(login,password)
-                    Log.d("Get devices","devices")
-                    val intent =  Intent(this,MapActivity::class.java)
-                    intent.putExtra("token", token)
-                    startActivity(intent)
-                }
-                catch (exception: Exception)
-                {
-                    Log.d("Error","Unexpected code ${exception.message}")
-                    Handler(Looper.getMainLooper()).post{
-                        val message = Toast.makeText(this,"Unexpected code ${exception.message}",
-                            Toast.LENGTH_SHORT)
-                        message.show()
+                        tokenManager.saveToken(token)
+                        Log.d("Текущий токен", token)
+                        startActivity(intent)
                     }
-                }
-                //Do some Network Request
-            }.start()
+                    catch (exception: Exception)
+                    {
+                        Log.d("Error","Unexpected code ${exception.message}")
+                        Handler(Looper.getMainLooper()).post{
+                            val message = Toast.makeText(this,"Unexpected code ${exception.message}",
+                                Toast.LENGTH_SHORT)
+                            message.show()
+                        }
+                    }
+                    //Do some Network Request
+                }.start()
+            }else{
+                val message = Toast.makeText(this,"Нет интернета! Включен оффлайн режим ${token}",
+                    Toast.LENGTH_SHORT)
+                message.show()
+                val intent =  Intent(this,MapActivity::class.java)
+                startActivity(intent)
+            }
         }
     }
 

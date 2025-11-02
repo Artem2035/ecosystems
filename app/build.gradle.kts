@@ -1,20 +1,37 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
 }
 
 android {
+    buildFeatures {
+        buildConfig = true
+    }
+
     namespace = "com.example.ecosystems"
     compileSdk = 33
 
+    // Чтение файла secrets.properties из корня проекта
+    val secretsPropertiesFile = rootProject.file("secrets.properties")
+    val secrets = Properties()
+    if (secretsPropertiesFile.exists()) {
+        secrets.load(FileInputStream(secretsPropertiesFile))
+    }
+
     defaultConfig {
         applicationId = "com.example.ecosystems"
-        minSdk = 24
+        minSdk = 26
         targetSdk = 33
         versionCode = 1
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // ключ в BuildConfig и в Manifest placeholders
+        buildConfigField("String", "YANDEX_MAPS_API_KEY", "\"${secrets["YANDEX_MAPS_API_KEY"]}\"")
+        manifestPlaceholders["YANDEX_MAPS_API_KEY"] = secrets["YANDEX_MAPS_API_KEY"] as String
     }
 
     buildTypes {
@@ -33,15 +50,11 @@ android {
     kotlinOptions {
         jvmTarget = "1.8"
     }
-    buildFeatures {
-        viewBinding = true
-    }
 }
 
 dependencies {
-    implementation("com.google.android.gms:play-services-maps:18.2.0")
+
     implementation("androidx.core:core-ktx:1.9.0")
-    implementation("com.google.maps.android:android-maps-utils:2.3.0")
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("com.google.android.material:material:1.9.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
@@ -49,7 +62,11 @@ dependencies {
     implementation("com.google.code.gson:gson:2.8.5")
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.2")
     implementation("androidx.fragment:fragment-ktx:1.6.2")
+    implementation("androidx.datastore:datastore-preferences:1.0.0")
+    implementation("com.google.crypto.tink:tink-android:1.13.0")
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
+
+    implementation("com.yandex.android:maps.mobile:4.19.0-lite")
 }

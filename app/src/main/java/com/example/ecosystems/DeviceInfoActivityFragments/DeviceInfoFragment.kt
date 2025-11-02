@@ -1,5 +1,7 @@
 package com.example.ecosystems.DeviceInfoActivityFragments
 
+import SecurePersonalAccountManager
+import SecureTokenManager
 import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
@@ -15,9 +17,11 @@ import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.widget.SwitchCompat
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.lifecycleScope
 import com.example.ecosystems.MainActivity
 import com.example.ecosystems.PersonalAccount
 import com.example.ecosystems.R
+import kotlinx.coroutines.launch
 import java.io.IOException
 import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
@@ -40,8 +44,12 @@ class DeviceInfoFragment : Fragment() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Прочитать токен
+        val tokenManager = SecureTokenManager(requireContext())
+        token = tokenManager.loadToken()!!
+
         arguments?.let {
-            token = it.getString("token").toString()
             currentDevice = HashMap(viewModel.currentDevice)
         }
     }
@@ -65,9 +73,7 @@ class DeviceInfoFragment : Fragment() {
             accountSectionsAutoCompleteTextView.setText(arrayAdapter.getItem(device_type_id-1), false)
         else
             accountSectionsAutoCompleteTextView.setText(arrayAdapter.getItem(device_type_id-2), false)
-        /*if(device_type_id == -1){
-            accountSectionsAutoCompleteTextView.setText(arrayAdapter.getItem(device_type_id), false)
-        }*/
+
 
         val name:EditText = view.findViewById(R.id.editNameText)
         val description:EditText = view.findViewById(R.id.editDescriptionText)
@@ -147,14 +153,6 @@ class DeviceInfoFragment : Fragment() {
                 }
                 thread.start()
                 thread.join() // Основной поток ждет завершения фонового потока
-//                name.setText(newDeviceInfo.getValue("name").toString())
-//                description.setText(newDeviceInfo.getValue("description").toString())
-//                serialNum.setText(newDeviceInfo.getValue("serial_number").toString())
-//                location.setText(newDeviceInfo.getValue("location_description").toString())
-//                latitude.setText(newDeviceInfo.getValue("latitude").toString())
-//                longitude.setText(newDeviceInfo.getValue("longitude").toString())
-//                timeZone.setText(newDeviceInfo.getValue("tz").toString())
-//                timeNotOnline.setText(newDeviceInfo.getValue("time_not_online").toString())
             }
             else{
                 saveChanges= true

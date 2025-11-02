@@ -1,5 +1,6 @@
 package com.example.ecosystems
 
+import SecureTokenManager
 import android.annotation.SuppressLint
 import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
@@ -8,9 +9,12 @@ import android.util.Log
 import android.view.View
 import android.widget.TextView
 import androidx.activity.viewModels
+import androidx.core.content.ContentProviderCompat.requireContext
+import androidx.lifecycle.lifecycleScope
 import androidx.viewpager2.widget.ViewPager2
 import com.example.ecosystems.DeviceInfoActivityFragments.SharedViewModel
 import com.google.android.material.tabs.TabLayout
+import kotlinx.coroutines.launch
 import java.io.Serializable
 import java.util.Locale
 
@@ -34,8 +38,11 @@ class DeviceInfoActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_device_info)
 
+        // Прочитать токен
+        val tokenManager = SecureTokenManager(this)
+        token = tokenManager.loadToken()!!
+
         val bundle = intent.extras
-        token = bundle?.getString("token").toString()
         mapOfDevices = (bundle?.getSerializable ("mapOfDevices") as? MutableMap<Int, MutableMap<String, Any?>>)!!
         deviceId = bundle.getString("deviceId").toString().toInt()
         currentDevice = mapOfDevices.getValue(deviceId)
@@ -50,7 +57,7 @@ class DeviceInfoActivity : AppCompatActivity() {
         tabLayout = findViewById(R.id.tabLayout)
         viewPager2 = findViewById(R.id.viewPager2)
 
-        val fragmentAdapter = DeviceInfoFragmentPageAdapter(supportFragmentManager,lifecycle, currentDevice, token)
+        val fragmentAdapter = DeviceInfoFragmentPageAdapter(supportFragmentManager,lifecycle, currentDevice)
         viewPager2.adapter = fragmentAdapter
 
         tabLayout.addOnTabSelectedListener(object  : TabLayout.OnTabSelectedListener{
@@ -83,7 +90,6 @@ class DeviceInfoActivity : AppCompatActivity() {
 
         val intent =  Intent(this,PersonalAccount::class.java)
         val bundle = Bundle()
-        bundle.putString("token", token)
         bundle.putSerializable("mapOfDevices", mapOfDevices as Serializable)
         bundle.putBoolean("showDevicesManagmentFragment", true)
         intent.putExtras(bundle)

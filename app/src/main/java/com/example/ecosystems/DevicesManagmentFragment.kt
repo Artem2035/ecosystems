@@ -1,14 +1,18 @@
 package com.example.ecosystems
 
+import SecurePersonalAccountManager
+import SecureTokenManager
 import android.content.Intent
 import android.os.Bundle
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.ecosystems.DataClasses.DeviceManagementItem
+import kotlinx.coroutines.launch
 import java.io.Serializable
 import java.util.Locale
 
@@ -35,9 +39,13 @@ class DevicesManagmentFragment : Fragment() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Прочитать токен
+        val tokenManager = SecureTokenManager(requireContext())
+        token = tokenManager.loadToken()!!
+
         arguments?.let {
             mapOfDevices = (it.getSerializable ("mapOfDevices") as? MutableMap<Int, Map<String, Any?>>)!!
-            token = it.getString("token") as String
             mapOfDevices.forEach { deviceId, map ->
                 val name = map.get("name").toString()
                 val serialNumber = map.get("serial_number").toString()
@@ -98,10 +106,7 @@ class DevicesManagmentFragment : Fragment() {
         val addDeviceButton = view.findViewById<androidx.appcompat.widget.AppCompatButton>(R.id.editPasswordButton)
         addDeviceButton.setOnClickListener {
             val intent =  Intent(it.context,DeviceAddActivity::class.java)
-            //intent.putExtra("token", token)
             val bundle = Bundle()
-            //bundle.putSerializable("listOfDevices", listOfDevices as Serializable)
-            bundle.putString("token", token)
             bundle.putSerializable("mapOfDevices", mapOfDevices as Serializable)
             intent.putExtras(bundle)
             startActivity(intent)

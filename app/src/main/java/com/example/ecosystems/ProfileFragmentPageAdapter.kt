@@ -13,7 +13,7 @@ import com.example.ecosystems.ProfileActivityFragments.SettingsFragment
 import java.io.Serializable
 
 class ProfileFragmentPageAdapter(fragmentManager: FragmentManager, lifecycle: Lifecycle,
-                                 val personalAccountData: Map<String, Any?>, val token:String):FragmentStateAdapter(fragmentManager, lifecycle) {
+                                 val personalAccountData: Map<String, Any?>):FragmentStateAdapter(fragmentManager, lifecycle) {
 
     lateinit var fragment: Fragment
     override fun getItemCount(): Int {
@@ -25,7 +25,6 @@ class ProfileFragmentPageAdapter(fragmentManager: FragmentManager, lifecycle: Li
             fragment = ProfileInfoFragment()
             val bundle = Bundle()
             bundle.putSerializable("personalAccountData", personalAccountData as Serializable)
-            bundle.putString("token", token)
             fragment.arguments = bundle
             return fragment
         }
@@ -33,7 +32,6 @@ class ProfileFragmentPageAdapter(fragmentManager: FragmentManager, lifecycle: Li
             fragment = ChangePassFragment()
             val bundle = Bundle()
             bundle.putSerializable("personalAccountData", personalAccountData as Serializable)
-            bundle.putString("token", token)
             fragment.arguments = bundle
             return fragment
         }
@@ -41,7 +39,6 @@ class ProfileFragmentPageAdapter(fragmentManager: FragmentManager, lifecycle: Li
             fragment = SettingsFragment()
             val bundle = Bundle()
             bundle.putSerializable("personalAccountData", personalAccountData as Serializable)
-            bundle.putString("token", token)
             fragment.arguments = bundle
             return fragment
         }
