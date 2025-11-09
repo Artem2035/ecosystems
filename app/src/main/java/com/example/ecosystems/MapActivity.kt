@@ -16,6 +16,7 @@ import android.widget.Toast
 import androidx.annotation.DrawableRes
 import androidx.annotation.WorkerThread
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.AppCompatButton
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -32,13 +33,17 @@ import com.example.ecosystems.data.local.SecureDevicesParametersManager
 import com.example.ecosystems.utils.isInternetAvailable
 import com.yandex.mapkit.Animation
 import com.yandex.mapkit.MapKitFactory
+import com.yandex.mapkit.geometry.LinearRing
 import com.yandex.mapkit.geometry.Point
+import com.yandex.mapkit.geometry.Polygon
 import com.yandex.mapkit.map.CameraPosition
 import com.yandex.mapkit.map.Cluster
 import com.yandex.mapkit.map.ClusterListener
 import com.yandex.mapkit.map.ClusterTapListener
 import com.yandex.mapkit.map.ClusterizedPlacemarkCollection
+import com.yandex.mapkit.map.MapObjectCollection
 import com.yandex.mapkit.map.MapObjectTapListener
+import com.yandex.mapkit.map.PolygonMapObject
 import com.yandex.mapkit.map.TextStyle
 import com.yandex.mapkit.mapview.MapView
 import com.yandex.runtime.image.ImageProvider
@@ -69,12 +74,22 @@ class MapActivity : AppCompatActivity()  {
 
     private lateinit var mapView: MapView
     private lateinit var clusterizedCollection: ClusterizedPlacemarkCollection
+    private lateinit var devicesLayout: View
+    private lateinit var backButton: AppCompatButton
+    private lateinit var profileImageButton: ImageButton
+    private lateinit var imageButton: ImageButton
+    private lateinit var taxationImageButton: ImageButton
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_map)
         mapView = findViewById(R.id.map)
         mapView.mapWindow.map.move(currentCameraPosition)
+        devicesLayout = findViewById(R.id.devicesLayout)
+        backButton = findViewById(R.id.backButton)
+        profileImageButton = findViewById(R.id.profileImageButton)
+        imageButton = findViewById(R.id.imageButton)
+        taxationImageButton = findViewById(R.id.taxationImageButton)
 
         // Прочитать токен
         val tokenManager = SecureTokenManager(this)
@@ -137,7 +152,8 @@ class MapActivity : AppCompatActivity()  {
 
     fun showListOfDevices(view: View){
 //        currentCameraPosition = mMap.cameraPosition
-        setContentView(R.layout.activity_map_list_of_devices)
+        showDeviceList()
+        //setContentView(R.layout.activity_map_list_of_devices)
 
         devicesRecyclerView = findViewById(R.id.devices_recycler_view)
         devicesRecyclerView.layoutManager = LinearLayoutManager(this)
@@ -173,7 +189,8 @@ class MapActivity : AppCompatActivity()  {
 
         val button = findViewById<ImageButton>(R.id.showMap)
         button.setOnClickListener {
-            setContentView(R.layout.activity_map)
+            showMap()
+            //setContentView(R.layout.activity_map)
             Log.d("test",listOfDevices.toString())
 
             Log.d("get devices", "Success")
@@ -315,6 +332,24 @@ class MapActivity : AppCompatActivity()  {
         mapView.onStop()
         MapKitFactory.getInstance().onStop()
         super.onStop()
+    }
+
+    private fun showDeviceList() {
+        mapView.visibility = View.GONE
+        backButton.visibility = View.GONE
+        profileImageButton.visibility = View.GONE
+        imageButton.visibility = View.GONE
+        taxationImageButton.visibility = View.GONE
+        devicesLayout.visibility = View.VISIBLE
+    }
+
+    private fun showMap() {
+        devicesLayout.visibility = View.GONE
+        mapView.visibility = View.VISIBLE
+        backButton.visibility = View.VISIBLE
+        profileImageButton.visibility = View.VISIBLE
+        imageButton.visibility = View.VISIBLE
+        taxationImageButton.visibility = View.VISIBLE
     }
 }
 

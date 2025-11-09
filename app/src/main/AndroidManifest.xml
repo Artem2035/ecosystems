@@ -18,6 +18,9 @@
         android:theme="@style/Theme.Ecosystems"
         tools:targetApi="31">
         <activity
+            android:name=".TreesManagementActivity"
+            android:exported="false" />
+        <activity
             android:name=".ForestTaxationActivity"
             android:exported="false" />
         <activity
@@ -31,12 +34,8 @@
             android:exported="false" />
 
         <meta-data
-            android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyAkU-09E24aB4N6-MOHhpohBfuMfpFfVq8" />
-
-        <meta-data
             android:name="com.yandex.maps.api.key"
-            android:value="${YANDEX_MAPS_API_KEY}"/>
+            android:value="${YANDEX_MAPS_API_KEY}" />
 
         <activity
             android:name=".MapActivity"
