@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+    <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp">
+
+        <TextView
+            android:id="@+id/colNumber"
+            android:layout_width="289px"
+            android:layout_height="wrap_content"/>
+
+        <!-- вертикальная линия -->
+        <View
+            android:layout_width="1dp"
+            android:layout_height="match_parent"
+            android:background="#AAAAAA"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="4dp"/>
+
+        <TextView
+            android:id="@+id/colSpecies"
+            android:layout_width="113px"
+            android:layout_height="wrap_content"/>
+
+        <!-- вертикальная линия -->
+        <View
+            android:layout_width="1dp"
+            android:layout_height="match_parent"
+            android:background="#AAAAAA"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="4dp"/>
+
+        <TextView
+            android:id="@+id/colAge"
+            android:layout_width="189px"
+            android:layout_height="wrap_content"/>
+
+        <!-- вертикальная линия -->
+        <View
+            android:layout_width="1dp"
+            android:layout_height="match_parent"
+            android:background="#AAAAAA"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="4dp"/>
+
+        <TextView
+            android:id="@+id/colD13"
+            android:layout_width="120px"
+            android:layout_height="wrap_content"/>
+
+        <!-- вертикальная линия -->
+        <View
+            android:layout_width="1dp"
+            android:layout_height="match_parent"
+            android:background="#AAAAAA"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="4dp"/>
+
+        <TextView
+            android:id="@+id/colHeight"
+            android:layout_width="63px"
+            android:layout_height="wrap_content"/>
+
+        <!-- вертикальная линия -->
+        <View
+            android:layout_width="1dp"
+            android:layout_height="match_parent"
+            android:background="#AAAAAA"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="4dp"/>
+
+        <TextView
+            android:id="@+id/colLk"
+            android:layout_width="65px"
+            android:layout_height="wrap_content"/>
+
+        <!-- вертикальная линия -->
+        <View
+            android:layout_width="1dp"
+            android:layout_height="match_parent"
+            android:background="#AAAAAA"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="4dp"/>
+
+        <TextView
+            android:id="@+id/colHDk"
+            android:layout_width="100px"
+            android:layout_height="wrap_content"/>
+
+        <!-- вертикальная линия -->
+        <View
+            android:layout_width="1dp"
+            android:layout_height="match_parent"
+            android:background="#AAAAAA"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="4dp"/>
+
+        <TextView
+            android:id="@+id/colCrownDiameterNS"
+            android:layout_width="364px"
+            android:layout_height="wrap_content"/>
+
+
+        <!-- вертикальная линия -->
+        <View
+            android:layout_width="1dp"
+            android:layout_height="match_parent"
+            android:background="#AAAAAA"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="4dp"/>
+
+        <TextView
+            android:id="@+id/colCrownDiameterEW"
+            android:layout_width="353px"
+            android:layout_height="wrap_content"/>
+
+        <!-- вертикальная линия -->
+        <View
+            android:layout_width="1dp"
+            android:layout_height="match_parent"
+            android:background="#AAAAAA"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="4dp"/>
+
+        <TextView
+            android:id="@+id/colAverageCrownDiameter"
+            android:layout_width="427px"
+            android:layout_height="wrap_content"/>
+
+        <!-- вертикальная линия -->
+        <View
+            android:layout_width="1dp"
+            android:layout_height="match_parent"
+            android:background="#AAAAAA"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="4dp"/>
+    </LinearLayout>
+    <!-- Нижняя граница строки -->
+    <View
+        android:layout_width="wrap_content"
+        android:layout_height="1dp"
+        android:background="#AAAAAA"/>
+</LinearLayout>

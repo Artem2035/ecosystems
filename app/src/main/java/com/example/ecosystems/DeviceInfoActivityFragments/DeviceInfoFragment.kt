@@ -21,6 +21,7 @@ import androidx.lifecycle.lifecycleScope
 import com.example.ecosystems.MainActivity
 import com.example.ecosystems.PersonalAccount
 import com.example.ecosystems.R
+import com.example.ecosystems.network.ApiService
 import kotlinx.coroutines.launch
 import java.io.IOException
 import okhttp3.MultipartBody
@@ -34,6 +35,7 @@ import java.io.Serializable
  * create an instance of this fragment.
  */
 class DeviceInfoFragment : Fragment() {
+    private val api: ApiService = ApiService()
     private lateinit var token:String
     private var currentDevice: MutableMap<String, Any?> = mutableMapOf()
     private var newDeviceInfo: MutableMap<String, Any?> = mutableMapOf()
@@ -108,14 +110,15 @@ class DeviceInfoFragment : Fragment() {
 
         val saveChangesButton = view.findViewById<androidx.appcompat.widget.AppCompatButton>(R.id.editPasswordButton)
         saveChangesButton.setOnClickListener{
+
             if(saveChanges) {
                 saveChangesButton.setText("Изменить")
                 saveChanges= false
                 val thread =Thread {
                     try {
-                        Log.d("Save profile data","profile")
+                        Log.d("DeviceInfoFragment","${currentDevice}")
                         newDeviceInfo["id"] = currentDevice.getValue("id_device").toString().toDouble().toInt()
-                        newDeviceInfo["module_type_id"] = currentDevice.getValue("module_type_id").toString().toDouble().toInt()
+                        newDeviceInfo["module_type_id"] = currentDevice.getOrDefault("module_type_id", 1).toString().toDouble().toInt()
                         newDeviceInfo["device_type_id"] = currentDevice.getValue("device_type_id").toString().toDouble().toInt()
 
                         newDeviceInfo["name"] = name.text.toString()
@@ -129,7 +132,8 @@ class DeviceInfoFragment : Fragment() {
                         newDeviceInfo["is_public"] = if (isPublic.isChecked) 1.0 else 0.0
                         newDeviceInfo["is_allow_download"] = if (allowDownload.isChecked) 1.0 else 0.0
                         newDeviceInfo["is_verified"] = if (isCertified.isChecked) 1.0 else 0.0
-                        saveDeviceInfoChanges()
+                        api.saveDeviceInfoChanges(token, newDeviceInfo)
+                        //saveDeviceInfoChanges()
 
                         currentDevice = HashMap(newDeviceInfo)
                         currentDevice.forEach { param, value ->
@@ -173,44 +177,6 @@ class DeviceInfoFragment : Fragment() {
             isCertified.isEnabled = !isCertified.isEnabled
 
             accountSectionsAutoCompleteTextView.isEnabled = !accountSectionsAutoCompleteTextView.isEnabled
-        }
-    }
-
-    fun saveDeviceInfoChanges(){
-        val client = OkHttpClient()
-
-        val requestBody = MultipartBody.Builder()
-            .setType(MultipartBody.FORM)
-            .addFormDataPart("name", newDeviceInfo.getValue("name").toString())
-            .addFormDataPart("description", newDeviceInfo.getValue("description").toString())
-            .addFormDataPart("id", newDeviceInfo.getValue("id").toString().toInt().toString())
-            .addFormDataPart("latitude", newDeviceInfo.getValue("latitude").toString().toDouble().toString())
-            .addFormDataPart("longitude", newDeviceInfo.getValue("longitude").toString().toDouble().toString())
-            .addFormDataPart("device_type_id", newDeviceInfo.getValue("device_type_id").toString().toDouble().toInt().toString())
-            .addFormDataPart("location_description", newDeviceInfo.getValue("location_description").toString())
-            .addFormDataPart("serial_number", newDeviceInfo.getValue("serial_number").toString())
-            .addFormDataPart("is_public", newDeviceInfo.getValue("is_public").toString().toDouble().toInt().toString())
-            .addFormDataPart("is_allow_download", newDeviceInfo.getValue("is_allow_download").toString().toDouble().toInt().toString())
-            .addFormDataPart("is_verified", newDeviceInfo.getValue("is_verified").toString().toDouble().toInt().toString())
-            .addFormDataPart("file_format", "undefined")
-            .addFormDataPart("module_type_id", newDeviceInfo.getValue("module_type_id").toString())
-            .addFormDataPart("tz", newDeviceInfo.getValue("tz").toString().toDouble().toInt().toString())
-            .addFormDataPart("time_not_online", newDeviceInfo.getValue("time_not_online").toString().toDouble().toInt().toString())
-            .build()
-
-        val request = Request.Builder()
-            .url("https://smartecosystems.petrsu.ru/api/v1/update_device_info")
-            .post(requestBody)
-            .header("Accept", "application/json, text/plain, */*")
-            .header("Accept-Language", "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7")
-            .header("Authorization", "Bearer ${token}")
-            .header("Connection", "keep-alive")
-            .header("Content-Type", "multipart/form-data; boundary=----WebKitFormBoundaryLavh0kSsI9bU3EIy")
-            .build()
-
-        client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) throw IOException("Unexpected code $response")
-            //response.body!!.string()
         }
     }
 }

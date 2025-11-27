@@ -23,34 +23,27 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.ecosystems.DataClasses.Device
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import java.io.IOException
-import java.util.Locale
 
+import java.util.Locale
 import com.example.ecosystems.DeviceDataTable.showDataWindow
 import com.example.ecosystems.data.local.SecureDevicesParametersManager
+import com.example.ecosystems.network.ApiService
 import com.example.ecosystems.utils.isInternetAvailable
-import com.yandex.mapkit.Animation
 import com.yandex.mapkit.MapKitFactory
-import com.yandex.mapkit.geometry.LinearRing
 import com.yandex.mapkit.geometry.Point
-import com.yandex.mapkit.geometry.Polygon
 import com.yandex.mapkit.map.CameraPosition
 import com.yandex.mapkit.map.Cluster
 import com.yandex.mapkit.map.ClusterListener
 import com.yandex.mapkit.map.ClusterTapListener
 import com.yandex.mapkit.map.ClusterizedPlacemarkCollection
-import com.yandex.mapkit.map.MapObjectCollection
 import com.yandex.mapkit.map.MapObjectTapListener
-import com.yandex.mapkit.map.PolygonMapObject
 import com.yandex.mapkit.map.TextStyle
 import com.yandex.mapkit.mapview.MapView
 import com.yandex.runtime.image.ImageProvider
 import java.io.Serializable
 
 class MapActivity : AppCompatActivity()  {
-
+    private val api: ApiService = ApiService()
     private var currentCameraPosition: CameraPosition = CameraPosition(
         Point(57.907,36.58),
         4.67F,0.0F,0.0F)
@@ -81,6 +74,7 @@ class MapActivity : AppCompatActivity()  {
     private lateinit var taxationImageButton: ImageButton
 
     override fun onCreate(savedInstanceState: Bundle?) {
+
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_map)
         mapView = findViewById(R.id.map)
@@ -101,7 +95,13 @@ class MapActivity : AppCompatActivity()  {
             Thread {
                 try {
                     Log.d("Get devices","devices")
-                    GetDevices(token)
+                    val gson = Gson()
+                    val mapAdapter = gson.getAdapter(object: TypeToken<Map<String, Any?>>() {})
+                    val result: Map<String, Any?> = mapAdapter.fromJson(api.getDevices(token))
+
+                    listOfDevices= result.get("devices") as MutableList<Map<String, Any?>>
+                    mapOfDeviceParameters = result.get("deviceParameters") as MutableMap<String, Map<String, Any?>>
+
                     var index: Int = 0
                     for (device in listOfDevices){
                         val name = device.get("name").toString()
@@ -217,44 +217,6 @@ class MapActivity : AppCompatActivity()  {
     fun startForestTaxationActivity(view: View){
         val intent =  Intent(this,ForestTaxationActivity::class.java)
         startActivity(intent)
-    }
-
-    @WorkerThread
-    fun GetDevices(token: String)
-    {
-        val client = OkHttpClient()
-
-        val request = Request.Builder()
-            .url("https://smartecosystems.petrsu.ru/api/v1/devices_lite?timeoffset=-3&device_type=NaN")
-            .header("Accept", "application/json, text/plain, */*")
-            .header("Accept-Language", "en-US,en;q=0.7")
-            .header("Authorization", "Bearer  ${token}")
-            .header("Connection", "keep-alive")
-            .build()
-
-        client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful)
-            {
-                Log.d("Error","Unexpected code $response")
-                throw IOException("Unexpected code $response")
-            }
-
-            val requestResult = response.body!!.string()
-
-            Log.d("requestResult", requestResult)
-            val gson = Gson()
-            val mapAdapter = gson.getAdapter(object: TypeToken<Map<String, Any?>>() {})
-            val result: Map<String, Any?> = mapAdapter.fromJson(requestResult)
-
-            if(result.get("result") != "ok")
-            {
-                Log.d("Error","Unexpected code $response")
-                throw Exception("Error while making request: result.get")
-            }
-
-            listOfDevices= result.get("devices") as MutableList<Map<String, Any?>>
-            mapOfDeviceParameters = result.get("deviceParameters") as MutableMap<String, Map<String, Any?>>
-        }
     }
 
     fun DrawDevicesOnMap()

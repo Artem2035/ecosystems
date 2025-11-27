@@ -17,6 +17,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.example.ecosystems.MainActivity
 import com.example.ecosystems.R
+import com.example.ecosystems.network.ApiService
 import com.example.ecosystems.utils.isInternetAvailable
 import com.google.gson.Gson
 import kotlinx.coroutines.launch
@@ -27,6 +28,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
 
 class SettingsFragment : Fragment() {
+    private val api: ApiService = ApiService()
     private var personalAccountData: MutableMap<String, Any?> = mutableMapOf()
     private lateinit var token:String
 
@@ -49,8 +51,9 @@ class SettingsFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?){
+        val personalAccountManager = SecurePersonalAccountManager(view.context)
         val sendEmail: SwitchCompat = view.findViewById(R.id.sendEmailSwitch)
-        if(personalAccountData.getValue("is_send_emails_not_devices_link") == 1.0)
+        if(personalAccountData.getValue("is_send_emails_not_devices_link") == 1)
             sendEmail.isChecked = true
 
         val saveChangesButton: AppCompatButton = view.findViewById(R.id.editPasswordButton)
@@ -68,7 +71,9 @@ class SettingsFragment : Fragment() {
                 try {
                     Log.d("Save profile data","profile")
                     personalAccountData["is_send_emails_not_devices_link"] = if (sendEmail.isChecked) 1 else 0
-                    saveSettingsChanges()
+                    api.saveProfileChanges(token, personalAccountData)
+                    personalAccountManager.saveData(personalAccountData)
+                    //saveSettingsChanges()
                 }
                 catch (exception: Exception)
                 {
@@ -89,28 +94,6 @@ class SettingsFragment : Fragment() {
                     Toast.LENGTH_SHORT)
                 message.show()
             }
-        }
-    }
-
-    fun saveSettingsChanges(){
-        val client = OkHttpClient()
-        val MEDIA_TYPE = "application/json".toMediaType()
-
-        val requestBody = "{\"user\": ${Gson().toJson(personalAccountData)}}"
-
-        Log.d("saveProfileChanes", requestBody)
-        val request = Request.Builder()
-            .url("https://smartecosystems.petrsu.ru/api/v1/profile")
-            .post(requestBody.toRequestBody(MEDIA_TYPE))
-            .header("Accept", "application/json, text/plain, */*")
-            .header("Accept-Language", "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7")
-            .header("Authorization", "Bearer ${token}")
-            .header("Connection", "keep-alive")
-            .header("Content-Type", "application/json")
-            .build()
-
-        client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) throw IOException("Unexpected code $response")
         }
     }
 }

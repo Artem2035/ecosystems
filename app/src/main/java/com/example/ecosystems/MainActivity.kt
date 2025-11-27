@@ -16,6 +16,7 @@ import androidx.annotation.RequiresApi
 import androidx.annotation.WorkerThread
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.lifecycle.lifecycleScope
+import com.example.ecosystems.network.ApiService
 import com.example.ecosystems.utils.isInternetAvailable
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -29,7 +30,7 @@ import java.io.IOException
 
 
 class MainActivity : AppCompatActivity() {
-
+    private val api: ApiService = ApiService()
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -66,7 +67,7 @@ class MainActivity : AppCompatActivity() {
             if(isInternetAvailable()){
                 Thread {
                     try {
-                        token = GetToken(login,password)
+                        token = api.GetToken(login,password)
                         Log.d("Get devices","devices")
                         val intent =  Intent(this,MapActivity::class.java)
 
@@ -93,48 +94,5 @@ class MainActivity : AppCompatActivity() {
                 startActivity(intent)
             }
         }
-    }
-
-    @WorkerThread
-    fun GetToken(login: String, password: String):String
-    {
-        val client = OkHttpClient()
-
-        var token = ""
-
-        val MEDIA_TYPE = "application/json".toMediaType()
-        val requestBody = "{\"login\":\"${login}\",\"password\":\"${password}\"}"
-
-        val request = Request.Builder()
-            .url("https://smartecosystems.petrsu.ru/api/v1/token")
-            .post(requestBody.toRequestBody(MEDIA_TYPE))
-            .header("Accept", "application/json, text/plain, */*")
-            .header("Accept-Language", "en-US,en")
-            .header("Connection", "keep-alive")
-            .header("Content-Type", "application/json")
-            .build()
-
-        client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful)
-            {
-                Log.d("Error","Unexpected code $response ${response.message} ${response.code} ${response.body}")
-                throw IOException("Unexpected code ${response.message}")
-            }
-            val requestResult = response.body!!.string()
-
-            val gson = Gson()
-            val mapAdapter = gson.getAdapter(object: TypeToken<Map<String, Any?>>() {})
-            val result: Map<String, Any?> = mapAdapter.fromJson(requestResult)
-
-            if(result.get("result") != "ok")
-            {
-                Log.d("Error","Error while making request: result.get")
-                throw Exception("Error while making request: result.get")
-            }
-
-            token = result.get("access_token").toString()
-            Log.d("Token","token = ${token}")
-        }
-        return token
     }
 }

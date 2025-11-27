@@ -17,6 +17,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.example.ecosystems.MainActivity
 import com.example.ecosystems.R
+import com.example.ecosystems.network.ApiService
 import com.example.ecosystems.utils.isInternetAvailable
 import java.io.IOException
 import okhttp3.MediaType.Companion.toMediaType
@@ -33,6 +34,7 @@ import kotlinx.coroutines.launch
  * create an instance of this fragment.
  */
 class ProfileInfoFragment : Fragment() {
+    private val api: ApiService = ApiService()
     private lateinit var token:String
     private var personalAccountData: MutableMap<String, Any?> = mutableMapOf()
     private var saveChanges = false
@@ -55,6 +57,7 @@ class ProfileInfoFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?){
+        val personalAccountManager = SecurePersonalAccountManager(view.context)
 
         val name = view.findViewById<EditText>(R.id.editNameText)
         val surname = view.findViewById<EditText>(R.id.editSurnameText)
@@ -91,7 +94,9 @@ class ProfileInfoFragment : Fragment() {
                         personalAccountData["email"] = email.text.toString()
                         personalAccountData["phone"] = phone.text.toString()
                         personalAccountData["organization"] = organization.text.toString()
-                        saveProfileChanges()
+                        api.saveProfileChanges(token, personalAccountData)
+                        personalAccountManager.saveData(personalAccountData)
+                        //saveProfileChanges()
                     }
                     catch (exception: Exception)
                     {
@@ -127,31 +132,6 @@ class ProfileInfoFragment : Fragment() {
             email.isEnabled = !email.isEnabled
             phone.isEnabled = !phone.isEnabled
             organization.isEnabled = !organization.isEnabled
-        }
-    }
-
-    fun saveProfileChanges(){
-        val client = OkHttpClient()
-        val MEDIA_TYPE = "application/json".toMediaType()
-
-        //val requestBody = "{\"user\":{\"account_id\":2,\"created_at\":\"Mon, 11 Jul 2022 20:36:23 GMT\",\"email\":\"demo@example.com\",\"id\":5,\"id_user\":2,\"is_send_emails_not_devices_link\":0,\"mpanel_layouts\":\"{\\\"1\\\":[{\\\"w\\\":3,\\\"h\\\":1,\\\"x\\\":0,\\\"y\\\":0,\\\"i\\\":\\\"eco_widget_1\\\",\\\"moved\\\":false,\\\"static\\\":false}],\\\"3\\\":[{\\\"w\\\":3,\\\"h\\\":1,\\\"x\\\":6,\\\"y\\\":0,\\\"i\\\":\\\"eco_widget_8\\\",\\\"moved\\\":false,\\\"static\\\":false},{\\\"w\\\":3,\\\"h\\\":1,\\\"x\\\":0,\\\"y\\\":1,\\\"i\\\":\\\"eco_widget_20\\\",\\\"moved\\\":false,\\\"static\\\":false},{\\\"w\\\":3,\\\"h\\\":2,\\\"x\\\":3,\\\"y\\\":1,\\\"i\\\":\\\"eco_widget_21\\\",\\\"moved\\\":false,\\\"static\\\":false},{\\\"w\\\":3,\\\"h\\\":1,\\\"x\\\":0,\\\"y\\\":2,\\\"i\\\":\\\"eco_widget_22\\\",\\\"moved\\\":false,\\\"static\\\":false},{\\\"w\\\":3,\\\"h\\\":1,\\\"x\\\":6,\\\"y\\\":2,\\\"i\\\":\\\"eco_widget_9\\\",\\\"moved\\\":false,\\\"static\\\":false},{\\\"w\\\":3,\\\"h\\\":1,\\\"x\\\":0,\\\"y\\\":3,\\\"i\\\":\\\"eco_widget_10\\\",\\\"moved\\\":false,\\\"static\\\":false},{\\\"w\\\":3,\\\"h\\\":1,\\\"x\\\":6,\\\"y\\\":1,\\\"i\\\":\\\"eco_widget_28\\\",\\\"moved\\\":false,\\\"static\\\":false},{\\\"w\\\":3,\\\"h\\\":1,\\\"x\\\":3,\\\"y\\\":0,\\\"i\\\":\\\"eco_widget_29\\\",\\\"moved\\\":false,\\\"static\\\":false},{\\\"w\\\":3,\\\"h\\\":1,\\\"x\\\":0,\\\"y\\\":0,\\\"i\\\":\\\"eco_widget_7\\\",\\\"moved\\\":false,\\\"static\\\":false},{\\\"w\\\":3,\\\"h\\\":1,\\\"x\\\":3,\\\"y\\\":3,\\\"i\\\":\\\"eco_widget_30\\\",\\\"moved\\\":false,\\\"static\\\":false}],\\\"4\\\":[{\\\"w\\\":2,\\\"h\\\":1,\\\"x\\\":0,\\\"y\\\":0,\\\"i\\\":\\\"eco_widget_19\\\",\\\"moved\\\":false,\\\"static\\\":false},{\\\"w\\\":2,\\\"h\\\":1,\\\"x\\\":2,\\\"y\\\":0,\\\"i\\\":\\\"eco_widget_18\\\",\\\"moved\\\":false,\\\"static\\\":false},{\\\"w\\\":2,\\\"h\\\":1,\\\"x\\\":4,\\\"y\\\":0,\\\"i\\\":\\\"eco_widget_13\\\",\\\"moved\\\":false,\\\"static\\\":false},{\\\"w\\\":2,\\\"h\\\":1,\\\"x\\\":0,\\\"y\\\":1,\\\"i\\\":\\\"eco_widget_15\\\",\\\"moved\\\":false,\\\"static\\\":false},{\\\"w\\\":2,\\\"h\\\":1,\\\"x\\\":2,\\\"y\\\":1,\\\"i\\\":\\\"eco_widget_14\\\",\\\"moved\\\":false,\\\"static\\\":false}],\\\"5\\\":[{\\\"w\\\":4,\\\"h\\\":1,\\\"x\\\":0,\\\"y\\\":0,\\\"i\\\":\\\"eco_widget_16\\\",\\\"moved\\\":false,\\\"static\\\":false}]}\",\"name\":\"Admin\",\"organization\":\"ПетрГУ\",\"phone\":\"+7 (921) 111-11-11\",\"second_name\":\"Admin\",\"service\":0,\"updated_at\":\"Sun, 23 Mar 2025 20:45:56 GMT\",\"user_name\":\"admin\",\"user_password_hash\":\"\$2b\$12\$BnEH3XxjaffK0yQiKoL2d.7zsYNmISbLl/HgD9p2hSLvSfb8Yf3T.    \"}}"
-        //val jsonPersonalAccountData = Gson().toJson(personalAccountData)
-        val requestBody = "{\"user\": ${Gson().toJson(personalAccountData)}}"
-
-        Log.d("saveProfileChanes", requestBody)
-        val request = Request.Builder()
-            .url("https://smartecosystems.petrsu.ru/api/v1/profile")
-            .post(requestBody.toRequestBody(MEDIA_TYPE))
-            .header("Accept", "application/json, text/plain, */*")
-            .header("Accept-Language", "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7")
-            .header("Authorization", "Bearer ${token}")
-            .header("Connection", "keep-alive")
-            .header("Content-Type", "application/json")
-            .build()
-
-        client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) throw IOException("Unexpected code $response")
-            Log.d("saveProfileChanges", response.body!!.string())
         }
     }
 }

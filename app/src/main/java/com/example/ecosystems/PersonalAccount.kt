@@ -16,6 +16,8 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.example.ecosystems.DataClasses.Device
+import com.example.ecosystems.data.local.SecureDevicesParametersManager
+import com.example.ecosystems.network.ApiService
 import com.example.ecosystems.utils.isInternetAvailable
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -27,7 +29,7 @@ import java.io.IOException
 
 
 class PersonalAccount : AppCompatActivity() {
-
+    private val api: ApiService = ApiService()
     private lateinit var token:String
     //private var listOfDevices: MutableList<Map<String, Any?>> = mutableListOf()
     //словарь, где ключ - параметр device_id,а значение сам словарь с параметрами этого устройства (в том числе и id)
@@ -43,15 +45,14 @@ class PersonalAccount : AppCompatActivity() {
         token = tokenManager.loadToken()!!
 
         val bundle = intent.extras
-        mapOfDevices = (bundle?.getSerializable("mapOfDevices") as? MutableMap<Int, Map<String, Any?>>)!!
 
-        val showDevicesManagmentFragment = bundle.getBoolean("showDevicesManagmentFragment", false)
+        val showDevicesManagmentFragment = bundle?.getBoolean("showDevicesManagmentFragment", false)
 
         if(isInternetAvailable()){
             val thread =Thread {
                 try {
                     Log.d("Get profile data","profile")
-                    getPersonalAccountData(token)
+                    personalAccountData = api.getPersonalAccountData(token)
                     Log.d("personalAccountData1", personalAccountData.toString())
                     personalAccountManager.saveData(personalAccountData)
                 }
@@ -97,7 +98,7 @@ class PersonalAccount : AppCompatActivity() {
                 }
             }
         }
-        if(showDevicesManagmentFragment) {
+        if(showDevicesManagmentFragment == true) {
             accountSectionsAutoCompleteTextView.setText(arrayAdapter.getItem(1), false)
             changeFragment(DevicesManagmentFragment())
         }
@@ -120,48 +121,13 @@ class PersonalAccount : AppCompatActivity() {
         // Создаем Bundle и упаковываем данные
         if(fragment is DevicesManagmentFragment)
         {
-            val bundle = Bundle()
-            bundle.putString("token", token)
-            bundle.putSerializable("mapOfDevices", mapOfDevices as Serializable)
-            fragment.arguments = bundle
+//            val bundle = Bundle()
+//            //bundle.putString("token", token)
+            //bundle.putSerializable("mapOfDevices", mapOfDevices as Serializable)
+//            fragment.arguments = bundle
         }
 
         fragmentTransaction.replace(R.id.frame_layout, fragment)
         fragmentTransaction.commit()
-    }
-
-    fun getPersonalAccountData(token: String)
-    {
-        val client = OkHttpClient()
-
-        val request = Request.Builder()
-            .url("https://smartecosystems.petrsu.ru/api/v1/profile")
-            .header("Accept", "application/json, text/plain, */*")
-            .header("Accept-Language", "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7")
-            .header("Authorization", "Bearer  ${token}")
-            .header("Connection", "keep-alive")
-            .build()
-
-        client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful)
-            {
-                Log.d("Error","Unexpected code $response")
-                throw IOException("Unexpected code $response")
-            }
-
-            val requestResult = response.body!!.string()
-
-            Log.d("requestResult", requestResult)
-            val gson = Gson()
-            val mapAdapter = gson.getAdapter(object: TypeToken<Map<String, Any?>>() {})
-            val result: Map<String, Any?> = mapAdapter.fromJson(requestResult)
-
-            if(result.get("result") != "ok")
-            {
-                Log.d("Error","Unexpected code $response")
-                throw Exception("Error while making request: result.get")
-            }
-            personalAccountData = result.get("user") as MutableMap<String, Any?>
-        }
     }
 }

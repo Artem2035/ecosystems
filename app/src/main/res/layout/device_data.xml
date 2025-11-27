@@ -14,22 +14,33 @@
         tools:layout_editor_absoluteX="0dp"
         tools:layout_editor_absoluteY="0dp">
 
-        <TableLayout
-            android:id="@+id/dataTable"
+        <ScrollView
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:padding="5dp" />
+            android:layout_height="wrap_content">
 
-        <androidx.appcompat.widget.AppCompatButton
-            android:id="@+id/button"
-            android:layout_width="150dp"
-            android:layout_height="48dp"
-            android:layout_gravity="center"
-            android:backgroundTint="@color/button_color"
-            android:text="Ok"
-            android:textColor="#FFFFFF"
-            android:background="@drawable/rounded_corners_button"
-            app:iconTint="#2B2424" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical">
+
+                <TableLayout
+                    android:id="@+id/dataTable"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:padding="5dp" />
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/button"
+                    android:layout_width="150dp"
+                    android:layout_height="48dp"
+                    android:layout_gravity="center"
+                    android:backgroundTint="@color/button_color"
+                    android:text="Ok"
+                    android:textColor="#FFFFFF"
+                    android:background="@drawable/rounded_corners_button"
+                    app:iconTint="#2B2424" />
+            </LinearLayout>
+        </ScrollView>
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

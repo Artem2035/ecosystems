@@ -12,6 +12,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.ecosystems.DataClasses.DeviceManagementItem
+import com.example.ecosystems.data.local.SecureDevicesParametersManager
 import kotlinx.coroutines.launch
 import java.io.Serializable
 import java.util.Locale
@@ -44,17 +45,17 @@ class DevicesManagmentFragment : Fragment() {
         val tokenManager = SecureTokenManager(requireContext())
         token = tokenManager.loadToken()!!
 
-        arguments?.let {
-            mapOfDevices = (it.getSerializable ("mapOfDevices") as? MutableMap<Int, Map<String, Any?>>)!!
-            mapOfDevices.forEach { deviceId, map ->
-                val name = map.get("name").toString()
-                val serialNumber = map.get("serial_number").toString()
-                val isPublic = if (map.get("is_public") == 0.0) false else true
-                val description = map.get("description").toString()
-                val location = map.get("location_description").toString()
-                val deviceItem = DeviceManagementItem(deviceId, name,serialNumber,description,location,isPublic)
-                devicesList.add(deviceItem)
-            }
+        val devicesManager = SecureDevicesParametersManager(requireContext())
+        val devicesManagerData = devicesManager.loadData()
+        mapOfDevices = devicesManagerData.get("mapOfDevices") as MutableMap<Int, Map<String, Any?>>
+        mapOfDevices.forEach { deviceId, map ->
+            val name = map.get("name").toString()
+            val serialNumber = map.get("serial_number").toString()
+            val isPublic = if (map.get("is_public") == 0.0) false else true
+            val description = map.get("description").toString()
+            val location = map.get("location_description").toString()
+            val deviceItem = DeviceManagementItem(deviceId, name,serialNumber,description,location,isPublic)
+            devicesList.add(deviceItem)
         }
     }
 

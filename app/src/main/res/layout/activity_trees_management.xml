@@ -19,6 +19,186 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
+
+    <HorizontalScrollView
+        android:id="@+id/horizontalScroll"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="8dp"
+        app:layout_constraintTop_toBottomOf="@+id/textView18"
+        app:layout_constraintBottom_toTopOf="@+id/backButton"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:scrollbars="horizontal">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:orientation="vertical">
+            <!-- Заголовок таблицы -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:background="#DDDDDD"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp">
+
+                <TextView
+                    android:id="@+id/head1"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:text="№ учетного дерева"
+                    android:textStyle="bold" />
+                <!-- вертикальная линия -->
+                <View
+                    android:layout_width="1dp"
+                    android:layout_height="match_parent"
+                    android:layout_marginStart="4dp"
+                    android:layout_marginEnd="4dp"
+                    android:background="#AAAAAA" />
+
+                <TextView
+                    android:id="@+id/head2"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:text="Порода"
+                    android:textStyle="bold" />
+
+                <!-- вертикальная линия -->
+                <View
+                    android:layout_width="1dp"
+                    android:layout_height="match_parent"
+                    android:layout_marginStart="4dp"
+                    android:layout_marginEnd="4dp"
+                    android:background="#AAAAAA" />
+
+                <TextView
+                    android:id="@+id/head3"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Возраст, лет"
+                    android:textStyle="bold" />
+
+                <!-- вертикальная линия -->
+                <View
+                    android:layout_width="1dp"
+                    android:layout_height="match_parent"
+                    android:layout_marginStart="4dp"
+                    android:layout_marginEnd="4dp"
+                    android:background="#AAAAAA" />
+
+                <TextView
+                    android:id="@+id/head4"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="d1.3, см"
+                    android:textStyle="bold" />
+
+                <!-- вертикальная линия -->
+                <View
+                    android:layout_width="1dp"
+                    android:layout_height="match_parent"
+                    android:layout_marginStart="4dp"
+                    android:layout_marginEnd="4dp"
+                    android:background="#AAAAAA" />
+
+                <TextView
+                    android:id="@+id/head5"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:text="H, м"
+                    android:textStyle="bold" />
+
+                <!-- вертикальная линия -->
+                <View
+                    android:layout_width="1dp"
+                    android:layout_height="match_parent"
+                    android:layout_marginStart="4dp"
+                    android:layout_marginEnd="4dp"
+                    android:background="#AAAAAA" />
+
+                <TextView
+                    android:id="@+id/head6"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:text="lk, м"
+                    android:textStyle="bold" />
+
+                <!-- вертикальная линия -->
+                <View
+                    android:layout_width="1dp"
+                    android:layout_height="match_parent"
+                    android:layout_marginStart="4dp"
+                    android:layout_marginEnd="4dp"
+                    android:background="#AAAAAA" />
+
+                <TextView
+                    android:id="@+id/head7"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:text="hDk, М"
+                    android:textStyle="bold" />
+
+                <!-- вертикальная линия -->
+                <View
+                    android:layout_width="1dp"
+                    android:layout_height="match_parent"
+                    android:layout_marginStart="4dp"
+                    android:layout_marginEnd="4dp"
+                    android:background="#AAAAAA" />
+
+                <TextView
+                    android:id="@+id/head8"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:text="Диаметр крон (С-Ю), см"
+                    android:textStyle="bold" />
+
+                <!-- вертикальная линия -->
+                <View
+                    android:layout_width="1dp"
+                    android:layout_height="match_parent"
+                    android:layout_marginStart="4dp"
+                    android:layout_marginEnd="4dp"
+                    android:background="#AAAAAA" />
+
+                <TextView
+                    android:id="@+id/head9"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:text="Диаметр крон (З-В), см"
+                    android:textStyle="bold" />
+
+                <!-- вертикальная линия -->
+                <View
+                    android:layout_width="1dp"
+                    android:layout_height="match_parent"
+                    android:layout_marginStart="4dp"
+                    android:layout_marginEnd="4dp"
+                    android:background="#AAAAAA" />
+
+                <TextView
+                    android:id="@+id/head10"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:text="Диаметр крон (средний), см"
+                    android:textStyle="bold" />
+
+                <!-- вертикальная линия -->
+            </LinearLayout>
+            <!-- Таблица данных -->
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/tableRecycler"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:nestedScrollingEnabled="false" />
+        </LinearLayout>
+    </HorizontalScrollView>
+
+
+
     <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/backButton"
         android:layout_width="wrap_content"
@@ -34,5 +214,21 @@
         app:cornerRadius="1dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
+        app:strokeColor="@color/black" />
+
+    <androidx.appcompat.widget.AppCompatButton
+        android:id="@+id/addTreeButton"
+        android:layout_width="wrap_content"
+        android:layout_height="48dp"
+        android:layout_marginEnd="30dp"
+        android:layout_marginBottom="16dp"
+        android:background="@drawable/back_button"
+        android:paddingStart="5dp"
+        android:paddingEnd="5dp"
+        android:text="Добавить дерево"
+        android:textColor="@color/black"
+        app:cornerRadius="1dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
         app:strokeColor="@color/black" />
 </androidx.constraintlayout.widget.ConstraintLayout>
