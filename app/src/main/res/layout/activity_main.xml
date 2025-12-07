@@ -58,7 +58,6 @@
         android:hint="@string/input_password_str_i"
         android:inputType="textPassword"
         android:paddingLeft="10dp"
-        android:text="PetrSU2022*"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.507"
         app:layout_constraintStart_toStartOf="parent"

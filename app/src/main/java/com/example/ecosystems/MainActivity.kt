@@ -2,30 +2,16 @@ package com.example.ecosystems
 
 import SecureTokenManager
 import android.content.Intent
-import android.os.Build
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
-import android.view.View
 import android.widget.Button
 import android.widget.EditText
 import android.widget.Toast
-import androidx.annotation.RequiresApi
-import androidx.annotation.WorkerThread
-import androidx.constraintlayout.widget.ConstraintLayout
-import androidx.lifecycle.lifecycleScope
+import androidx.appcompat.app.AppCompatActivity
 import com.example.ecosystems.network.ApiService
 import com.example.ecosystems.utils.isInternetAvailable
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
-import kotlinx.coroutines.launch
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
-import java.io.IOException
 
 
 
@@ -34,6 +20,9 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        val editTextPassword: EditText = findViewById(R.id.editTextPassword)
+        editTextPassword.setText(BuildConfig.BUTTON_TEXT)
 
         var token = ""
         val tokenManager = SecureTokenManager(this)
@@ -55,7 +44,7 @@ class MainActivity : AppCompatActivity() {
         logInButton.setOnClickListener {
 
             val login = findViewById<EditText?>(R.id.editTextLogin).text.toString()
-            val password = findViewById<EditText?>(R.id.editTextPassword).text.toString()
+            val password = editTextPassword.text.toString()
 
             if(login.isEmpty() or password.isEmpty())
             {

@@ -1,8 +1,6 @@
 package com.example.ecosystems.DeviceInfoActivityFragments
 
-import SecurePersonalAccountManager
 import SecureTokenManager
-import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -17,17 +15,9 @@ import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.widget.SwitchCompat
 import androidx.fragment.app.activityViewModels
-import androidx.lifecycle.lifecycleScope
-import com.example.ecosystems.MainActivity
-import com.example.ecosystems.PersonalAccount
 import com.example.ecosystems.R
 import com.example.ecosystems.network.ApiService
-import kotlinx.coroutines.launch
-import java.io.IOException
-import okhttp3.MultipartBody
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import java.io.Serializable
+import com.example.ecosystems.utils.isInternetAvailable
 
 /**
  * A simple [Fragment] subclass.
@@ -110,6 +100,14 @@ class DeviceInfoFragment : Fragment() {
 
         val saveChangesButton = view.findViewById<androidx.appcompat.widget.AppCompatButton>(R.id.editPasswordButton)
         saveChangesButton.setOnClickListener{
+            if(!requireContext().isInternetAvailable()){
+                Handler(Looper.getMainLooper()).post{
+                    val message = Toast.makeText(view.context,"Недоступно в офлайн режиме!",
+                        Toast.LENGTH_SHORT)
+                    message.show()
+                }
+                return@setOnClickListener
+            }
 
             if(saveChanges) {
                 saveChangesButton.setText("Изменить")

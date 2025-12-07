@@ -116,7 +116,6 @@ class MapActivity : AppCompatActivity()  {
 
                     mapOfDevicesDeviceParameters.put("mapOfDevices",mapOfDevices)
                     mapOfDevicesDeviceParameters.put("mapOfDeviceParameters",mapOfDeviceParameters)
-//                    Log.d("mdevices", mapOfDevicesDeviceParameters.toString())
                     devicesManager.saveData(mapOfDevicesDeviceParameters)
                     DrawDevicesOnMap()
 
@@ -139,7 +138,13 @@ class MapActivity : AppCompatActivity()  {
                     devicesManagerData.get("mapOfDeviceParameters") != null  ){
                     mapOfDevices = devicesManagerData.get("mapOfDevices") as MutableMap<Int, Map<String, Any?>>
                     mapOfDeviceParameters = devicesManagerData.get("mapOfDeviceParameters") as MutableMap<String, Map<String, Any?>>
-                    Log.d("params","${devicesManagerData.get("mapOfDevices")}")
+                    for (device in mapOfDevices.keys){
+                        val name = mapOfDevices.get(device)?.get("name").toString()
+                        val location = mapOfDevices.get(device)?.get("location_description").toString()
+                        val lastUpdate = mapOfDevices.get(device)?.get("last_update_datetime").toString()
+                        val deviceItem = Device(mapOfDevices.get(device)?.get("device_id").toString().toDouble().toInt(), name, location, lastUpdate)
+                        devicesList.add(deviceItem)
+                    }
                     DrawDevicesOnMap()
                 }
             }.start()
@@ -151,13 +156,14 @@ class MapActivity : AppCompatActivity()  {
     }
 
     fun showListOfDevices(view: View){
-//        currentCameraPosition = mMap.cameraPosition
         showDeviceList()
-        //setContentView(R.layout.activity_map_list_of_devices)
-
         devicesRecyclerView = findViewById(R.id.devices_recycler_view)
         devicesRecyclerView.layoutManager = LinearLayoutManager(this)
         tempDevicesList.addAll(devicesList)
+        Log.d("params123","${mapOfDevices}")
+        Log.d("params123","${devicesList}")
+        Log.d("params123","${mapOfDeviceParameters}")
+        Log.d("params123","${listOfDeviceParametertsNames}")
         val deviceAdapter: DeviceAdapter = DeviceAdapter(tempDevicesList, mapOfDevices, mapOfDeviceParameters, listOfDeviceParametertsNames)
         devicesRecyclerView.adapter = deviceAdapter
 
@@ -207,10 +213,10 @@ class MapActivity : AppCompatActivity()  {
     fun startProfileActivity(view: View)
     {
         val intent =  Intent(this,PersonalAccount::class.java)
-        val bundle = Bundle()
+//        val bundle = Bundle()
         //bundle.putSerializable("listOfDevices", listOfDevices as Serializable)
-        bundle.putSerializable("mapOfDevices", mapOfDevices as Serializable)
-        intent.putExtras(bundle)
+//        bundle.putSerializable("mapOfDevices", mapOfDevices as Serializable)
+//        intent.putExtras(bundle)
         startActivity(intent)
     }
 

@@ -14,18 +14,8 @@ import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.lifecycleScope
-import com.example.ecosystems.DataClasses.Device
-import com.example.ecosystems.data.local.SecureDevicesParametersManager
 import com.example.ecosystems.network.ApiService
 import com.example.ecosystems.utils.isInternetAvailable
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
-import kotlinx.coroutines.launch
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import java.io.Serializable
-import java.io.IOException
 
 
 class PersonalAccount : AppCompatActivity() {
@@ -45,7 +35,6 @@ class PersonalAccount : AppCompatActivity() {
         token = tokenManager.loadToken()!!
 
         val bundle = intent.extras
-
         val showDevicesManagmentFragment = bundle?.getBoolean("showDevicesManagmentFragment", false)
 
         if(isInternetAvailable()){
@@ -117,16 +106,6 @@ class PersonalAccount : AppCompatActivity() {
     {
         val fragmentManager = supportFragmentManager
         val fragmentTransaction = fragmentManager.beginTransaction()
-
-        // Создаем Bundle и упаковываем данные
-        if(fragment is DevicesManagmentFragment)
-        {
-//            val bundle = Bundle()
-//            //bundle.putString("token", token)
-            //bundle.putSerializable("mapOfDevices", mapOfDevices as Serializable)
-//            fragment.arguments = bundle
-        }
-
         fragmentTransaction.replace(R.id.frame_layout, fragment)
         fragmentTransaction.commit()
     }

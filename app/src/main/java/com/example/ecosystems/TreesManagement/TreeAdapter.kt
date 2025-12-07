@@ -41,9 +41,9 @@ class TreeAdapter(private val items: MutableList<TreeRow>) :
         holder.height.text = item.height.toString()
         holder.lk.text = item.lk.toString()
         holder.hDk.text = item.hdk.toString()
-        holder.crownDiameterNS.text = item.CrownDiameterNS.toString()
-        holder.crownDiameterEW.text = item.CrownDiameterEW.toString()
-        holder.averageCrownDiameter.text = item.AverageCrownDiameter .toString()
+        holder.crownDiameterNS.text = item.crownDiameterNS.toString()
+        holder.crownDiameterEW.text = item.crownDiameterEW.toString()
+        holder.averageCrownDiameter.text = item.averageCrownDiameter .toString()
     }
 
     override fun getItemCount() = items.size
@@ -52,6 +52,5 @@ class TreeAdapter(private val items: MutableList<TreeRow>) :
         items.add(row)
         notifyItemInserted(items.size - 1)
         Log.d("addRow", "addRow")
-
     }
 }

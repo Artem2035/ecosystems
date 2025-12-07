@@ -1,5 +1,5 @@
-import java.util.Properties
 import java.io.FileInputStream
+import java.util.Properties
 
 plugins {
     id("com.android.application")
@@ -32,6 +32,8 @@ android {
         // ключ в BuildConfig и в Manifest placeholders
         buildConfigField("String", "YANDEX_MAPS_API_KEY", "\"${secrets["YANDEX_MAPS_API_KEY"]}\"")
         manifestPlaceholders["YANDEX_MAPS_API_KEY"] = secrets["YANDEX_MAPS_API_KEY"] as String
+
+        buildConfigField("String", "BUTTON_TEXT", "\"${secrets["BUTTON_TEXT"]}\"")
     }
 
     buildTypes {
@@ -44,11 +46,11 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
     }
     kotlinOptions {
-        jvmTarget = "1.8"
+        jvmTarget = "11"
     }
 }
 
@@ -65,6 +67,7 @@ dependencies {
     implementation("androidx.datastore:datastore-preferences:1.0.0")
     implementation("com.google.crypto.tink:tink-android:1.13.0")
     testImplementation("junit:junit:4.13.2")
+    testImplementation("io.mockk:mockk:1.13.8")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
 

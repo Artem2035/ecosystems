@@ -4,23 +4,20 @@ import SecurePersonalAccountManager
 import SecureTokenManager
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.lifecycle.lifecycleScope
+import android.widget.Toast
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.ecosystems.DataClasses.DeviceManagementItem
 import com.example.ecosystems.data.local.SecureDevicesParametersManager
-import kotlinx.coroutines.launch
-import java.io.Serializable
+import com.example.ecosystems.utils.isInternetAvailable
 import java.util.Locale
 
-// TODO: Rename parameter arguments, choose names that match
-// the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
-private const val ARG_PARAM1 = "param1"
-private const val ARG_PARAM2 = "param2"
 
 /**
  * A simple [Fragment] subclass.
@@ -28,8 +25,6 @@ private const val ARG_PARAM2 = "param2"
  * create an instance of this fragment.
  */
 class DevicesManagmentFragment : Fragment() {
-    //  recycle view
-    //private var listOfDevices: MutableList<Map<String, Any?>> = mutableListOf()
     private lateinit var token:String
 
     private lateinit var devicesManagmentRecyclerView: RecyclerView
@@ -106,10 +101,15 @@ class DevicesManagmentFragment : Fragment() {
 
         val addDeviceButton = view.findViewById<androidx.appcompat.widget.AppCompatButton>(R.id.editPasswordButton)
         addDeviceButton.setOnClickListener {
+            if(!requireContext().isInternetAvailable()){
+                Handler(Looper.getMainLooper()).post{
+                    val message = Toast.makeText(view.context,"Недоступно в офлайн режиме!",
+                        Toast.LENGTH_SHORT)
+                    message.show()
+                }
+                return@setOnClickListener
+            }
             val intent =  Intent(it.context,DeviceAddActivity::class.java)
-            val bundle = Bundle()
-            bundle.putSerializable("mapOfDevices", mapOfDevices as Serializable)
-            intent.putExtras(bundle)
             startActivity(intent)
         }
     }

@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <EditText
+            android:id="@+id/speciesEt"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Порода"/>
+
+        <EditText
+            android:id="@+id/ageEt"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="number"
+            android:hint="Возраст, лет"/>
+
+        <EditText
+            android:id="@+id/d13Et"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="numberDecimal"
+            android:hint="d1.3, см"/>
+
+        <EditText
+            android:id="@+id/heightEt"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="numberDecimal"
+            android:hint="H, м"/>
+
+        <EditText
+            android:id="@+id/lkEt"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="numberDecimal"
+            android:hint="lk, м"/>
+
+        <EditText
+            android:id="@+id/hdkEt"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="numberDecimal"
+            android:hint="hDk, М"/>
+
+        <EditText
+            android:id="@+id/crownDiameterNSEt"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="numberDecimal"
+            android:hint="Диаметр крон (С-Ю), см"/>
+
+        <EditText
+            android:id="@+id/crownDiameterEWEt"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="numberDecimal"
+            android:hint="Диаметр крон (З-В), см"/>
+
+        <EditText
+            android:id="@+id/averageCrownDiameterEt"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="numberDecimal"
+            android:hint="Диаметр крон (средний), см"/>
+    </LinearLayout>
+</ScrollView>

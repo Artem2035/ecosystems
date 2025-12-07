@@ -14,18 +14,10 @@ import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.widget.AppCompatButton
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.lifecycleScope
 import com.example.ecosystems.MainActivity
 import com.example.ecosystems.R
 import com.example.ecosystems.network.ApiService
 import com.example.ecosystems.utils.isInternetAvailable
-import java.io.IOException
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
-import com.google.gson.Gson
-import kotlinx.coroutines.launch
 
 
 /**
@@ -72,7 +64,6 @@ class ProfileInfoFragment : Fragment() {
         organization.setText(personalAccountData.getValue("organization").toString())
 
         val saveChangesButton: AppCompatButton = view.findViewById(R.id.editPasswordButton)
-
         saveChangesButton.setOnClickListener {
             if(!requireContext().isInternetAvailable()){
                 Handler(Looper.getMainLooper()).post{

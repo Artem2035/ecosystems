@@ -11,12 +11,13 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
 
-class ApiService {
-    val BASE_URL = "https://smartecosystems.petrsu.ru/"
-    val client: OkHttpClient by lazy {
-        OkHttpClient.Builder()
-            .build()
-    }
+class ApiService(private val client: OkHttpClient = OkHttpClient.Builder().build(),
+                 private val BASE_URL: String = "https://smartecosystems.petrsu.ru/") {
+//    val BASE_URL = "https://smartecosystems.petrsu.ru/"
+//    val client: OkHttpClient by lazy {
+//        OkHttpClient.Builder()
+//            .build()
+//    }
 
     @WorkerThread
     fun getDevices(token: String): String {
@@ -69,7 +70,7 @@ class ApiService {
                 throw Exception("Error while making request: result.get")
             }
 
-            token = result.get("access_token").toString()
+            token = result.get("access_token")!!.toString()
             Log.d("Token","token = ${token}")
         }
         return token
@@ -103,7 +104,8 @@ class ApiService {
                 Log.d("Error","Unexpected code $response")
                 throw Exception("Error while making request: result.get")
             }
-            return result.get("user") as MutableMap<String, Any?>
+            val PersonalAccountData = result.get("user")!!
+            return PersonalAccountData as MutableMap<String, Any?>
         }
     }
 
