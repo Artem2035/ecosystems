@@ -12,7 +12,7 @@ android {
     }
 
     namespace = "com.example.ecosystems"
-    compileSdk = 33
+    compileSdk = 34
 
     // Чтение файла secrets.properties из корня проекта
     val secretsPropertiesFile = rootProject.file("secrets.properties")
@@ -24,11 +24,17 @@ android {
     defaultConfig {
         applicationId = "com.example.ecosystems"
         minSdk = 26
-        targetSdk = 33
+        targetSdk = 34
         versionCode = 1
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // Ключевые параметры для отключения запросов разрешений
+        testInstrumentationRunnerArguments.putAll(mapOf(
+            "no-isolated-storage" to "true",
+            "disablePermissionGrants" to "true",
+            "additionalTestOutputDir" to "/data/data/com.example.ecosystems/test_output"
+        ))
         // ключ в BuildConfig и в Manifest placeholders
         buildConfigField("String", "YANDEX_MAPS_API_KEY", "\"${secrets["YANDEX_MAPS_API_KEY"]}\"")
         manifestPlaceholders["YANDEX_MAPS_API_KEY"] = secrets["YANDEX_MAPS_API_KEY"] as String
@@ -68,8 +74,11 @@ dependencies {
     implementation("com.google.crypto.tink:tink-android:1.13.0")
     testImplementation("junit:junit:4.13.2")
     testImplementation("io.mockk:mockk:1.13.8")
+    testImplementation("org.robolectric:robolectric:4.11.1")
+    testImplementation("androidx.test:core:1.5.0")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
+    androidTestImplementation("androidx.benchmark:benchmark-junit4:1.2.2")
 
     implementation("com.yandex.android:maps.mobile:4.19.0-lite")
 }

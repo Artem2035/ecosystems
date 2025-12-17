@@ -14,21 +14,18 @@ import android.view.View
 import android.widget.ImageButton
 import android.widget.Toast
 import androidx.annotation.DrawableRes
-import androidx.annotation.WorkerThread
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.AppCompatButton
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.ecosystems.DataClasses.Device
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
-
-import java.util.Locale
 import com.example.ecosystems.DeviceDataTable.showDataWindow
 import com.example.ecosystems.data.local.SecureDevicesParametersManager
 import com.example.ecosystems.network.ApiService
 import com.example.ecosystems.utils.isInternetAvailable
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import com.yandex.mapkit.MapKitFactory
 import com.yandex.mapkit.geometry.Point
 import com.yandex.mapkit.map.CameraPosition
@@ -40,7 +37,7 @@ import com.yandex.mapkit.map.MapObjectTapListener
 import com.yandex.mapkit.map.TextStyle
 import com.yandex.mapkit.mapview.MapView
 import com.yandex.runtime.image.ImageProvider
-import java.io.Serializable
+import java.util.Locale
 
 class MapActivity : AppCompatActivity()  {
     private val api: ApiService = ApiService()
@@ -53,7 +50,7 @@ class MapActivity : AppCompatActivity()  {
     private var devicesList: MutableList<Device> = mutableListOf()
 
     //словарь, где ключ - параметр device_id,а значение сам словарь с параметрами этого устройства (в том числе и id)
-    private var mapOfDevices: MutableMap<Int, Map<String, Any?>> = mutableMapOf()
+    var mapOfDevices: MutableMap<Int, Map<String, Any?>> = mutableMapOf()
 
     private var tempDevicesList: MutableList<Device> = mutableListOf()
     private lateinit var token:String
@@ -178,11 +175,13 @@ class MapActivity : AppCompatActivity()  {
                 tempDevicesList.clear()
                 val searchText = newText!!.lowercase(Locale.getDefault())
                 if(!searchText.isEmpty()){
+
                     devicesList.forEach {
                         if(it.heading.lowercase(Locale.getDefault()).contains(searchText)){
                             tempDevicesList.add(it)
                         }
                     }
+
                     deviceAdapter.notifyDataSetChanged()
                 }else{
                     tempDevicesList.clear()

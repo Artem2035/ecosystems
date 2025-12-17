@@ -1,4 +1,4 @@
-package com.example.ecosystems.ApiService
+package com.example.ecosystems.apiService
 
 import android.util.Log
 import com.example.ecosystems.network.ApiService

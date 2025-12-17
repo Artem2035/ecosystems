@@ -1,4 +1,4 @@
-package com.example.ecosystems.ApiService
+package com.example.ecosystems.apiService
 import com.example.ecosystems.network.ApiService
 import io.mockk.every
 import io.mockk.mockk
