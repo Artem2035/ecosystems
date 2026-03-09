@@ -80,5 +80,5 @@ dependencies {
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
     androidTestImplementation("androidx.benchmark:benchmark-junit4:1.2.2")
 
-    implementation("com.yandex.android:maps.mobile:4.19.0-lite")
+    implementation("com.yandex.android:maps.mobile:4.19.0-full")
 }

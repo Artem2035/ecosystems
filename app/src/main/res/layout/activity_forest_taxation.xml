@@ -13,8 +13,21 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="parent">
 
+    </com.yandex.mapkit.mapview.MapView>
+
+
+    <ImageButton
+        android:id="@+id/searchPlanImageButton"
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="16dp"
+        android:background="#00FFFFFF"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:srcCompat="?android:attr/actionModeWebSearchDrawable" />
 
     <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/backButton"
@@ -34,7 +47,7 @@
         app:strokeColor="@color/black" />
 
     <ImageButton
-        android:id="@+id/imageButton"
+        android:id="@+id/imageButton2"
         android:layout_width="50dp"
         android:layout_height="50dp"
         android:layout_marginTop="16dp"
@@ -44,6 +57,17 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:srcCompat="@drawable/icon_list" />
+
+    <ImageButton
+        android:id="@+id/planInfoImageButton"
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        android:layout_marginEnd="16dp"
+        android:background="#00FFFFFF"
+        android:onClick="startTreesManagementActivity"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/imageButton2"
+        app:srcCompat="@drawable/plan_info_icon" />
 
     <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/addPolygonButton"

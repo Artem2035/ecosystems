@@ -200,4 +200,50 @@ class ApiService(private val client: OkHttpClient = OkHttpClient.Builder().build
             //response.body!!.string()
         }
     }
+
+    /*получения планов для карт для таксации леса*/
+    fun loadPlans(token: String): String{
+        val request = Request.Builder()
+            .url("${BASE_URL}api/v1/orthophotoplans/objects?timeoffset=-3&is_admin=false")
+            .header("Accept", "application/json, text/plain, */*")
+            .header("Accept-Language", "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7")
+            .header("Authorization", "Bearer ${token}")
+            .header("Connection", "keep-alive")
+            .build()
+
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) throw IOException("Unexpected code $response")
+            response.body!!.string()
+        }
+
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful)
+                throw IOException("Ошибка: ${response.code}")
+
+            return response.body!!.string()
+        }
+    }
+
+    /*получить все слои гис объекта*/
+    fun loadPlanLayers(token: String, uuid: String): String{
+        val request = Request.Builder()
+            .url("${BASE_URL}api/v1/orthophotoplans/layers/${uuid}")
+            .header("Accept", "*/*")
+            .header("Accept-Language", "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7")
+            .header("Authorization", "Bearer ${token}")
+            .header("Connection", "keep-alive")
+            .build()
+
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) throw IOException("Unexpected code $response")
+            response.body!!.string()
+        }
+
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful)
+                throw IOException("Ошибка: ${response.code}")
+
+            return response.body!!.string()
+        }
+    }
 }

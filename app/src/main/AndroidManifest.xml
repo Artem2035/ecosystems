@@ -7,7 +7,6 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
-
     <application
         android:name=".EcosystemsApp"
         android:allowBackup="true"
@@ -19,6 +18,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Ecosystems"
         tools:targetApi="31">
+        <activity
+            android:name=".Plan.PlanInfoActivity"
+            android:exported="false" />
         <activity
             android:name=".TreesManagementActivity"
             android:exported="false" />
