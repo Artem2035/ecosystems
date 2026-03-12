@@ -1,16 +1,16 @@
 package com.example.ecosystems
 
-import SecurePersonalAccountManager
 import SecureTokenManager
 import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import androidx.fragment.app.Fragment
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.ecosystems.DataClasses.DeviceManagementItem
@@ -51,6 +51,8 @@ class DevicesManagmentFragment : Fragment() {
             val location = map.get("location_description").toString()
             val deviceItem = DeviceManagementItem(deviceId, name,serialNumber,description,location,isPublic)
             devicesList.add(deviceItem)
+            if(deviceId == 1464)
+                Log.d("DeviceInfoFragment","${map}")
         }
     }
 

@@ -5,7 +5,6 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
-import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -14,7 +13,10 @@ import android.widget.AutoCompleteTextView
 import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.widget.SwitchCompat
+import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.lifecycleScope
+import com.example.ecosystems.DataClasses.DeviceInfo
 import com.example.ecosystems.R
 import com.example.ecosystems.network.ApiService
 import com.example.ecosystems.utils.isInternetAvailable
@@ -33,6 +35,20 @@ class DeviceInfoFragment : Fragment() {
 
     // Получаем ViewModel от Activity
     private val viewModel: SharedViewModel by activityViewModels()
+
+    private lateinit var name:EditText
+    private lateinit var description:EditText
+    private lateinit var serialNum:EditText
+    private lateinit var location:EditText
+    private lateinit var latitude:EditText
+    private lateinit var longitude:EditText
+
+    private lateinit var timeZone:EditText
+    private lateinit var timeNotOnline:EditText
+
+    private lateinit var isPublic:SwitchCompat
+    private lateinit var allowDownload:SwitchCompat
+    private lateinit var isCertified:SwitchCompat
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -67,19 +83,19 @@ class DeviceInfoFragment : Fragment() {
             accountSectionsAutoCompleteTextView.setText(arrayAdapter.getItem(device_type_id-2), false)
 
 
-        val name:EditText = view.findViewById(R.id.editNameText)
-        val description:EditText = view.findViewById(R.id.editDescriptionText)
-        val serialNum:EditText = view.findViewById(R.id.editTextSerialNum)
-        val location:EditText = view.findViewById(R.id.editTextLocation)
-        val latitude:EditText = view.findViewById(R.id.editTextLatitude)
-        val longitude:EditText = view.findViewById(R.id.editTextLongitude)
+        name = view.findViewById(R.id.editNameText)
+        description = view.findViewById(R.id.editDescriptionText)
+        serialNum = view.findViewById(R.id.editTextSerialNum)
+        location = view.findViewById(R.id.editTextLocation)
+        latitude = view.findViewById(R.id.editTextLatitude)
+        longitude = view.findViewById(R.id.editTextLongitude)
 
-        val timeZone:EditText = view.findViewById(R.id.editTextTimeZone)
-        val timeNotOnline:EditText = view.findViewById(R.id.editTextTimeNotOnline)
+        timeZone = view.findViewById(R.id.editTextTimeZone)
+        timeNotOnline = view.findViewById(R.id.editTextTimeNotOnline)
 
-        val isPublic:SwitchCompat = view.findViewById(R.id.isPublicSwitch)
-        val allowDownload:SwitchCompat = view.findViewById(R.id.allowDownloadSwitch)
-        val isCertified:SwitchCompat = view.findViewById(R.id.isCertifiedSwitch)
+        isPublic = view.findViewById(R.id.isPublicSwitch)
+        allowDownload = view.findViewById(R.id.allowDownloadSwitch)
+        isCertified = view.findViewById(R.id.isCertifiedSwitch)
 
         name.setText(currentDevice.getValue("name").toString())
         description.setText(currentDevice.getValue("description").toString())
@@ -112,30 +128,41 @@ class DeviceInfoFragment : Fragment() {
             if(saveChanges) {
                 saveChangesButton.setText("Изменить")
                 saveChanges= false
+
+                val newDeviceInfo = buildDeviceInfo()
+                if (newDeviceInfo == null){
+                    val message = Toast.makeText(view.context,"Не удалось сохранить данные!",
+                        Toast.LENGTH_SHORT)
+                    message.show()
+                    return@setOnClickListener
+                }
+
+/*                newDeviceInfo["id"] = currentDevice.getValue("id_device").toString().toDouble().toInt()
+                newDeviceInfo["module_type_id"] = currentDevice.getOrDefault("module_type_id", 1)?.toString()?.toDoubleOrNull()?.toInt()
+                newDeviceInfo["device_type_id"] = currentDevice.getValue("device_type_id").toString().toDouble().toInt()
+
+                newDeviceInfo["name"] = name.text.toString()
+                newDeviceInfo["description"] = description.text.toString()
+                newDeviceInfo["serial_number"] = serialNum.text.toString()
+                newDeviceInfo["location_description"] = location.text.toString()
+                newDeviceInfo["latitude"] = latitude.text.toString().toDouble()
+                newDeviceInfo["longitude"] = longitude.text.toString().toDouble()
+                newDeviceInfo["tz"] = timeZone.text.toString().toDouble()
+                newDeviceInfo["time_not_online"] = timeNotOnline.text.toString().toDouble()
+                newDeviceInfo["is_public"] = if (isPublic.isChecked) 1.0 else 0.0
+                newDeviceInfo["is_allow_download"] = if (allowDownload.isChecked) 1.0 else 0.0
+                newDeviceInfo["is_verified"] = if (isCertified.isChecked) 1.0 else 0.0*/
+
                 val thread =Thread {
                     try {
                         Log.d("DeviceInfoFragment","${currentDevice}")
-                        newDeviceInfo["id"] = currentDevice.getValue("id_device").toString().toDouble().toInt()
-                        newDeviceInfo["module_type_id"] = currentDevice.getOrDefault("module_type_id", 1).toString().toDouble().toInt()
-                        newDeviceInfo["device_type_id"] = currentDevice.getValue("device_type_id").toString().toDouble().toInt()
-
-                        newDeviceInfo["name"] = name.text.toString()
-                        newDeviceInfo["description"] = description.text.toString()
-                        newDeviceInfo["serial_number"] = serialNum.text.toString()
-                        newDeviceInfo["location_description"] = location.text.toString()
-                        newDeviceInfo["latitude"] = latitude.text.toString().toDouble()
-                        newDeviceInfo["longitude"] = longitude.text.toString().toDouble()
-                        newDeviceInfo["tz"] = timeZone.text.toString().toDouble()
-                        newDeviceInfo["time_not_online"] = timeNotOnline.text.toString().toDouble()
-                        newDeviceInfo["is_public"] = if (isPublic.isChecked) 1.0 else 0.0
-                        newDeviceInfo["is_allow_download"] = if (allowDownload.isChecked) 1.0 else 0.0
-                        newDeviceInfo["is_verified"] = if (isCertified.isChecked) 1.0 else 0.0
                         api.saveDeviceInfoChanges(token, newDeviceInfo)
-                        //saveDeviceInfoChanges()
+                        viewModel.updateDeviceInfo(newDeviceInfo,lifecycleScope)
 
-                        currentDevice = HashMap(newDeviceInfo)
-                        currentDevice.forEach { param, value ->
-                            viewModel.updateValue(param, value)
+                        Handler(Looper.getMainLooper()).post{
+                            val message = Toast.makeText(view.context,"Данные изменены!",
+                                Toast.LENGTH_SHORT)
+                            message.show()
                         }
                     }
                     catch (exception: Exception)
@@ -146,11 +173,6 @@ class DeviceInfoFragment : Fragment() {
                                 Toast.LENGTH_SHORT)
                             message.show()
                         }
-                    }
-                    Handler(Looper.getMainLooper()).post{
-                        val message = Toast.makeText(view.context,"Данные изменены!",
-                            Toast.LENGTH_SHORT)
-                        message.show()
                     }
                 }
                 thread.start()
@@ -175,6 +197,33 @@ class DeviceInfoFragment : Fragment() {
             isCertified.isEnabled = !isCertified.isEnabled
 
             accountSectionsAutoCompleteTextView.isEnabled = !accountSectionsAutoCompleteTextView.isEnabled
+        }
+    }
+
+    // Построение DeviceInfo с обработкой null
+    private fun buildDeviceInfo(): DeviceInfo? {
+        return try {
+            DeviceInfo(
+                id             = currentDevice["id_device"]?.toString()?.toDoubleOrNull()?.toInt()
+                    ?: return null.also { Log.e("DeviceInfo", "id_device is null") },
+                name           = name.text.toString().trim(),
+                description    = description.text.toString().trim(),
+                serialNumber   = serialNum.text.toString().trim(),
+                locationDescription = location.text.toString().trim(),
+                latitude       = latitude.text.toString().toDoubleOrNull() ?: 0.0,
+                longitude      = longitude.text.toString().toDoubleOrNull() ?: 0.0,
+                deviceTypeId   = currentDevice["device_type_id"]?.toString()?.toDoubleOrNull()?.toInt()
+                    ?: return null.also { Log.e("DeviceInfo", "device_type_id is null") },
+                moduleTypeId   = currentDevice["module_type_id"]?.toString()?.toDoubleOrNull()?.toInt() ?: 1,
+                tz             = timeZone.text.toString().toDoubleOrNull()?.toInt() ?: 0,
+                timeNotOnline  = timeNotOnline.text.toString().toDoubleOrNull()?.toInt() ?: 0,
+                isPublic       = isPublic.isChecked,
+                isAllowDownload = allowDownload.isChecked,
+                isVerified     = isCertified.isChecked
+            )
+        } catch (e: Exception) {
+            Log.e("buildDeviceInfo", "Failed to build DeviceInfo", e)
+            null
         }
     }
 }

@@ -72,6 +72,11 @@ dependencies {
     implementation("androidx.fragment:fragment-ktx:1.6.2")
     implementation("androidx.datastore:datastore-preferences:1.0.0")
     implementation("com.google.crypto.tink:tink-android:1.13.0")
+
+    implementation("com.github.chrisbanes:PhotoView:2.3.0")
+    implementation("com.github.bumptech.glide:glide:4.16.0")
+    implementation("org.opencv:opencv:4.9.0")
+
     testImplementation("junit:junit:4.13.2")
     testImplementation("io.mockk:mockk:1.13.8")
     testImplementation("org.robolectric:robolectric:4.11.1")

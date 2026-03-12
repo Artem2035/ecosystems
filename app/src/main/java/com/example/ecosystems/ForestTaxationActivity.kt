@@ -5,6 +5,7 @@ import android.annotation.SuppressLint
 import android.content.DialogInterface
 import android.content.Intent
 import android.graphics.Color
+import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -18,6 +19,7 @@ import androidx.appcompat.widget.AppCompatButton
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.ecosystems.DataClasses.Plan
+import com.example.ecosystems.PhotoViewDialog.ImageAnnotationDialog
 import com.example.ecosystems.Plan.PlanAdapter
 import com.example.ecosystems.Plan.PlanInfoActivity
 import com.example.ecosystems.network.ApiService
@@ -136,7 +138,15 @@ class ForestTaxationActivity : AppCompatActivity() {
 
         val searchPlanButton = findViewById<ImageButton>(R.id.searchPlanImageButton)
         searchPlanButton.setOnClickListener {
-            showSearchPlanDialog()
+            val dialog = ImageAnnotationDialog(
+                context = this,
+                imageUri = Uri.parse("android.resource://${packageName}/drawable/brand_image_dark")
+            ) { annotatedBitmap ->
+                // annotatedBitmap — изображение с нарисованными прямоугольниками от OpenCV
+                // или сохранить на диск
+            }
+            dialog.show()
+            //showSearchPlanDialog()
         }
 
         val thread =Thread{
@@ -216,27 +226,6 @@ class ForestTaxationActivity : AppCompatActivity() {
         val intent =  Intent(this,TreesManagementActivity::class.java)
         startActivity(intent)
     }
-
-/*    private fun drawPolygon2() {
-        val mapObjects: MapObjectCollection = mapView.mapWindow.map.mapObjects
-
-        // 4 точки (можно любые)
-        val point1 = Point(55.751244, 37.618423)
-        val point2 = Point(57.907, 36.58)
-        val point3 = Point(30.0, 30.3)
-        val point4 = Point(25.0, 32.618423)
-
-        // Создаём полигон
-        val outerRing = LinearRing(listOf(point1, point2, point3, point4, point1))
-        val polygon = Polygon(outerRing, emptyList())
-
-        val polygonObj: PolygonMapObject = mapObjects.addPolygon(polygon)
-
-        // Настраиваем цвета
-        polygonObj.fillColor = Color.argb(100, 0, 255, 0) // полупрозрачная зелёная заливка
-        polygonObj.strokeColor = Color.GRAY // граница
-        polygonObj.strokeWidth = 1f
-    }*/
 
     private fun drawPolygon() {
         val ring = LinearRing(selectedPoints + selectedPoints.first()) // замкнуть

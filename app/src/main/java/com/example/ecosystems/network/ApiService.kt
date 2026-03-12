@@ -2,6 +2,7 @@ package com.example.ecosystems.network
 
 import android.util.Log
 import androidx.annotation.WorkerThread
+import com.example.ecosystems.DataClasses.DeviceInfo
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import okhttp3.MediaType.Companion.toMediaType
@@ -13,11 +14,6 @@ import java.io.IOException
 
 class ApiService(private val client: OkHttpClient = OkHttpClient.Builder().build(),
                  private val BASE_URL: String = "https://smartecosystems.petrsu.ru/") {
-//    val BASE_URL = "https://smartecosystems.petrsu.ru/"
-//    val client: OkHttpClient by lazy {
-//        OkHttpClient.Builder()
-//            .build()
-//    }
 
     @WorkerThread
     fun getDevices(token: String): String {
@@ -164,25 +160,25 @@ class ApiService(private val client: OkHttpClient = OkHttpClient.Builder().build
         }
     }
 
-    fun saveDeviceInfoChanges(token: String, newDeviceInfo: MutableMap<String, Any?>){
-        Log.d("saveDeviceInfoChanges","${token} ${newDeviceInfo}")
+    /*обновление данных устройства*/
+    fun saveDeviceInfoChanges(token: String, deviceInfo: DeviceInfo){
+        Log.d("saveDeviceInfoChanges", "$deviceInfo")
         val requestBody = MultipartBody.Builder()
             .setType(MultipartBody.FORM)
-            .addFormDataPart("name", newDeviceInfo.getValue("name").toString())
-            .addFormDataPart("description", newDeviceInfo.getOrDefault("description", "").toString())
-            .addFormDataPart("id", newDeviceInfo.getValue("id").toString().toInt().toString())
-            .addFormDataPart("latitude", newDeviceInfo.getOrDefault("latitude", "0.0").toString().toDouble().toString())
-            .addFormDataPart("longitude", newDeviceInfo.getOrDefault("longitude", "0.0").toString().toDouble().toString())
-            .addFormDataPart("device_type_id", newDeviceInfo.getValue("device_type_id").toString().toDouble().toInt().toString())
-            .addFormDataPart("location_description", newDeviceInfo.getOrDefault("location_description", "").toString())
-            .addFormDataPart("serial_number", newDeviceInfo.getValue("serial_number").toString())
-            .addFormDataPart("is_public", newDeviceInfo.getOrDefault("is_public", "0.0").toString().toDouble().toInt().toString())
-            .addFormDataPart("is_allow_download", newDeviceInfo.getOrDefault("is_allow_download", "0.0").toString().toDouble().toInt().toString())
-            .addFormDataPart("is_verified", newDeviceInfo.getOrDefault("is_verified", "0.0").toString().toDouble().toInt().toString())
-            .addFormDataPart("file_format", "undefined")
-            .addFormDataPart("module_type_id", newDeviceInfo.getOrDefault("module_type_id", 1).toString())
-            .addFormDataPart("tz", newDeviceInfo.getOrDefault("tz", "0").toString().toDouble().toInt().toString())
-            .addFormDataPart("time_not_online", newDeviceInfo.getOrDefault("time_not_online", "0").toString().toDouble().toInt().toString())
+            .addFormDataPart("id",                  deviceInfo.id.toString())
+            .addFormDataPart("name",                deviceInfo.name)
+            .addFormDataPart("description",         deviceInfo.description)
+            .addFormDataPart("serial_number",       deviceInfo.serialNumber)
+            .addFormDataPart("location_description",deviceInfo.locationDescription)
+            .addFormDataPart("latitude",            deviceInfo.latitude.toString())
+            .addFormDataPart("longitude",           deviceInfo.longitude.toString())
+            .addFormDataPart("device_type_id",      deviceInfo.deviceTypeId.toString())
+            .addFormDataPart("module_type_id",      deviceInfo.moduleTypeId.toString())
+            .addFormDataPart("tz",                  deviceInfo.tz.toString())
+            .addFormDataPart("time_not_online",     deviceInfo.timeNotOnline.toString())
+            .addFormDataPart("is_public",           if (deviceInfo.isPublic) "1" else "0")
+            .addFormDataPart("is_allow_download",   if (deviceInfo.isAllowDownload) "1" else "0")
+            .addFormDataPart("is_verified",         if (deviceInfo.isVerified) "1" else "0")
             .build()
 
         val request = Request.Builder()
@@ -192,12 +188,10 @@ class ApiService(private val client: OkHttpClient = OkHttpClient.Builder().build
             .header("Accept-Language", "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7")
             .header("Authorization", "Bearer ${token}")
             .header("Connection", "keep-alive")
-            .header("Content-Type", "multipart/form-data; boundary=----WebKitFormBoundaryLavh0kSsI9bU3EIy")
             .build()
 
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) throw IOException("Unexpected code $response")
-            //response.body!!.string()
         }
     }
 
@@ -244,6 +238,36 @@ class ApiService(private val client: OkHttpClient = OkHttpClient.Builder().build
                 throw IOException("Ошибка: ${response.code}")
 
             return response.body!!.string()
+        }
+    }
+
+    /*регистрация нового аккаунта*/
+    fun profileRegistration(profileInfo: MutableMap<String, Any?>):String{
+        val MEDIA_TYPE = "application/json".toMediaType()
+
+        val requestBody = "{\"user\": ${Gson().toJson(profileInfo)}}"
+        val request = Request.Builder()
+            .url("${BASE_URL}api/v1/profile/registration")
+            .post(requestBody.toRequestBody(MEDIA_TYPE))
+            .header("Accept", "application/json, text/plain, */*")
+            .header("Content-Type", "application/json")
+            .build()
+
+        client.newCall(request).execute().use { response ->
+            Log.d("result", "${response}")
+            if (!response.isSuccessful){
+                throw IOException("Unexpected code: ${response.message}")
+            }
+            val requestResult = response.body!!.string()
+            val gson = Gson()
+            val mapAdapter = gson.getAdapter(object: TypeToken<Map<String, Any?>>() {})
+            val result: Map<String, Any?> = mapAdapter.fromJson(requestResult)
+
+            if(result.getOrDefault("result", "") != "ok"){
+                throw Exception("Ошибка: ${result.getOrDefault("description", "неизвестная ошибка!")}")
+            }
+
+            return result.getOrDefault("description", "Запрос выполнен!").toString()
         }
     }
 }
