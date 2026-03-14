@@ -3,14 +3,18 @@ package com.example.ecosystems.PhotoViewDialog
 import android.app.Dialog
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.drawable.Drawable
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.view.WindowManager
 import android.widget.Button
 import android.widget.Toast
 import com.bumptech.glide.Glide
+import com.bumptech.glide.load.engine.DiskCacheStrategy
+import com.bumptech.glide.request.RequestOptions
 import com.bumptech.glide.request.target.CustomTarget
 import com.bumptech.glide.request.transition.Transition
 import com.example.ecosystems.R
@@ -30,7 +34,7 @@ class ImageAnnotationDialog(
     private lateinit var btnRectangle: MaterialButton
     private lateinit var btnPolygon: MaterialButton
     private lateinit var btnMagicWand: MaterialButton
-    private var wandTolerance: Float = 30f
+    private var wandTolerance: Float = 10f
 
     private var originalBitmap: Bitmap? = null
 
@@ -149,7 +153,12 @@ class ImageAnnotationDialog(
     private fun loadImage() {
         Glide.with(context)
             .asBitmap()
-            .load(imageUri)
+            .load(imageUri.toString())
+            .apply(
+                RequestOptions()
+                    .timeout(30_000)
+                    .diskCacheStrategy(DiskCacheStrategy.ALL)
+            )
             .into(object : CustomTarget<Bitmap>() {
                 override fun onResourceReady(
                     resource: Bitmap,
@@ -161,7 +170,13 @@ class ImageAnnotationDialog(
                         overlayView.updateImageMatrix(photoView.imageMatrix)
                     }
                 }
-                override fun onLoadCleared(placeholder: android.graphics.drawable.Drawable?) {}
+
+                override fun onLoadFailed(errorDrawable: Drawable?) {
+                    Log.e("ImageLoad", "Ошибка загрузки: $imageUri")
+                    Toast.makeText(context, "Ошибка загрузки изображения", Toast.LENGTH_SHORT).show()
+                }
+
+                override fun onLoadCleared(placeholder: Drawable?) {}
             })
     }
 

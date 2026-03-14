@@ -205,10 +205,10 @@ class ApiService(private val client: OkHttpClient = OkHttpClient.Builder().build
             .header("Connection", "keep-alive")
             .build()
 
-        client.newCall(request).execute().use { response ->
+/*        client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) throw IOException("Unexpected code $response")
             response.body!!.string()
-        }
+        }*/
 
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful)
@@ -270,4 +270,5 @@ class ApiService(private val client: OkHttpClient = OkHttpClient.Builder().build
             return result.getOrDefault("description", "Запрос выполнен!").toString()
         }
     }
+
 }

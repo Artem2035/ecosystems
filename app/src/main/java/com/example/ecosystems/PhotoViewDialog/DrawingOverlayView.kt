@@ -492,8 +492,10 @@ class DrawingOverlayView @JvmOverloads constructor(
             val isSelected = index == selectedIndex && selectedType == SelectType.RECT
             canvas.drawRect(screenRect, if (isSelected) paintSelectedFill else paintFill)
             canvas.drawRect(screenRect, if (isSelected) paintSelected else paintStroke)
-            drawCornerHandles(canvas, screenRect, isSelected)
-            if (isSelected) drawDeleteButton(canvas, screenRect.right, screenRect.top)
+            if (isSelected) {
+                drawCornerHandles(canvas, screenRect, true)
+                drawDeleteButton(canvas, screenRect.right, screenRect.top)
+            }
         }
 
         // Сохранённые полигоны
