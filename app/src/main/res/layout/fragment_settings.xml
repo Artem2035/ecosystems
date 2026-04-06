@@ -61,7 +61,7 @@
             app:strokeColor="@color/black" />
 
         <androidx.appcompat.widget.AppCompatButton
-            android:id="@+id/editPasswordButton"
+            android:id="@+id/addDeviceButton"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             android:layout_width="wrap_content"

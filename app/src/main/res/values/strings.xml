@@ -23,10 +23,10 @@
 
     <string-array name="device_type_names">
         <item>Метеостанция</item>
-        <item>Сейсмостанция</item>
         <item>Модуль</item>
         <item>Фотоловушка</item>
         <item>Аудиоулавливатель</item>
+        <item>Сейсмостанция</item>
         <item>Модуль ИИ</item>
         <item>Метеостанция Сокол</item>
         <item>WiFiMeteo станция</item>
@@ -35,8 +35,32 @@
         <item>Метеостанция М</item>
         <item>Пульсационная станция</item>
         <item>Пульсационная станция V2</item>
+        <item>Беспилотная система</item>
+        <item>Микроклиматическая станция (АПИК)</item>
+        <item>Метеостанция М2</item>
+        <item>Метеостанция М3</item>
     </string-array>
 
+    <string-array name="seismic_station_names">
+        <item>CMG-3ESP</item>
+        <item>CMG-6TD</item>
+    </string-array>
+
+    <string-array name="unmanned_system_names">
+        <item>Надводный комплекс</item>
+        <item>Воздушный дрон</item>
+    </string-array>
+
+    <string-array name="module_type_names">
+        <item>Базовая станция</item>
+        <item>Метеостанция</item>
+        <item>Город</item>
+        <item>Растения</item>
+        <item>Почва</item>
+        <item>Агро</item>
+        <item>Газоанализатор</item>
+        <item>Газоанализатор V2</item>
+    </string-array>
     <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
 </resources>

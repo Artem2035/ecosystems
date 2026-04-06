@@ -82,22 +82,22 @@ fun DeviceInfo.toMap(): MutableMap<String, Any?> = mutableMapOf(
 fun MutableMap<String, Any?>.toDeviceInfo(): DeviceInfo? {
     return try {
         DeviceInfo(
-            id           = this["id"]?.toString()?.toDoubleOrNull()?.toInt() ?: return null,
-            name         = this["name"]?.toString() ?: return null,
+            id = this["id"]?.toString()?.toDoubleOrNull()?.toInt() ?: return null,
+            name = this["name"]?.toString() ?: return null,
             deviceTypeId = this["device_type_id"]?.toString()?.toDoubleOrNull()?.toInt() ?: return null,
             serialNumber = this["serial_number"]?.toString() ?: return null,
 
-            description         = this["description"]?.toString() ?: "",
+            description = this["description"]?.toString() ?: "",
             locationDescription = this["location_description"]?.toString() ?: "",
-            latitude            = this["latitude"]?.toString()?.toDoubleOrNull() ?: 0.0,
-            longitude           = this["longitude"]?.toString()?.toDoubleOrNull() ?: 0.0,
-            moduleTypeId        = this["module_type_id"]?.toString()?.toDoubleOrNull()?.toInt() ?: 1,
-            tz                  = this["tz"]?.toString()?.toDoubleOrNull()?.toInt() ?: 0,
-            timeNotOnline       = this["time_not_online"]?.toString()?.toDoubleOrNull()?.toInt() ?: 0,
+            latitude = this["latitude"]?.toString()?.toDoubleOrNull() ?: 0.0,
+            longitude = this["longitude"]?.toString()?.toDoubleOrNull() ?: 0.0,
+            moduleTypeId = this["module_type_id"]?.toString()?.toDoubleOrNull()?.toInt() ?: 1,
+            tz = this["tz"]?.toString()?.toDoubleOrNull()?.toInt() ?: 0,
+            timeNotOnline = this["time_not_online"]?.toString()?.toDoubleOrNull()?.toInt() ?: 0,
 
-            isPublic        = this["is_public"]?.toString()?.toDoubleOrNull()?.toInt() == 1,
+            isPublic = this["is_public"]?.toString()?.toDoubleOrNull()?.toInt() == 1,
             isAllowDownload = this["is_allow_download"]?.toString()?.toDoubleOrNull()?.toInt() == 1,
-            isVerified      = this["is_verified"]?.toString()?.toDoubleOrNull()?.toInt() == 1
+            isVerified = this["is_verified"]?.toString()?.toDoubleOrNull()?.toInt() == 1
         )
     } catch (e: Exception) {
         Log.e("toDeviceInfo", "Conversion failed", e)

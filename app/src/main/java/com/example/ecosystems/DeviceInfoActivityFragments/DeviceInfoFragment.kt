@@ -11,6 +11,7 @@ import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
 import android.widget.EditText
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.widget.SwitchCompat
 import androidx.fragment.app.Fragment
@@ -20,6 +21,7 @@ import com.example.ecosystems.DataClasses.DeviceInfo
 import com.example.ecosystems.R
 import com.example.ecosystems.network.ApiService
 import com.example.ecosystems.utils.isInternetAvailable
+import com.google.android.material.textfield.TextInputLayout
 
 /**
  * A simple [Fragment] subclass.
@@ -31,11 +33,15 @@ class DeviceInfoFragment : Fragment() {
     private lateinit var token:String
     private var currentDevice: MutableMap<String, Any?> = mutableMapOf()
     private var newDeviceInfo: MutableMap<String, Any?> = mutableMapOf()
+    private val moduleTypeAdaptersMap = mutableMapOf<String, ArrayAdapter<String>>()
     private var saveChanges = false
+    private lateinit var arrayAdapter: ArrayAdapter<String>
 
     // Получаем ViewModel от Activity
     private val viewModel: SharedViewModel by activityViewModels()
 
+    private lateinit var deviceTypeAutoCompleteTextView: AutoCompleteTextView
+    private lateinit var moduleTypeAutoCompleteTextView: AutoCompleteTextView
     private lateinit var name:EditText
     private lateinit var description:EditText
     private lateinit var serialNum:EditText
@@ -71,17 +77,83 @@ class DeviceInfoFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?){
 
-        val accountSectionsAutoCompleteTextView = view.findViewById<AutoCompleteTextView>(R.id.accountSectionsAutoCompleteTextView)
-        val accountSectionNames = resources.getStringArray(R.array.device_type_names)
-        val arrayAdapter = ArrayAdapter(view.context,R.layout.dropdown_item,accountSectionNames)
-        accountSectionsAutoCompleteTextView.setAdapter(arrayAdapter)
+        deviceTypeAutoCompleteTextView = view.findViewById(R.id.deviceTypeAutoCompleteTextView)
+        val deviceTypeNames = resources.getStringArray(R.array.device_type_names)
+        arrayAdapter = ArrayAdapter(view.context,R.layout.dropdown_item,deviceTypeNames)
+        deviceTypeAutoCompleteTextView.setAdapter(arrayAdapter)
 
-        val device_type_id = currentDevice.getValue("device_type_id").toString().toDouble().toInt()
-        if(device_type_id < 6)
-            accountSectionsAutoCompleteTextView.setText(arrayAdapter.getItem(device_type_id-1), false)
-        else
-            accountSectionsAutoCompleteTextView.setText(arrayAdapter.getItem(device_type_id-2), false)
+        moduleTypeAutoCompleteTextView = view.findViewById(R.id.moduleTypeAutoCompleteTextView)
+        val moduleTypeInputLayout: TextInputLayout = view.findViewById(R.id.moduleTypeInputLayout)
+        val moduleTextView: TextView = view.findViewById(R.id.textView18)
+        moduleTextView.visibility = View.GONE
+        moduleTypeInputLayout.visibility = View.GONE
 
+        val moduleTypeMap = mapOf(
+            "Сейсмостанция" to R.array.seismic_station_names,
+            "Модуль"        to R.array.module_type_names,
+            "Беспилотная система" to R.array.unmanned_system_names
+        )
+        moduleTypeMap.forEach { moduleName, resId ->
+            moduleTypeAdaptersMap[moduleName] = ArrayAdapter(view.context, android.R.layout.simple_list_item_1, resources.getStringArray(resId))
+        }
+
+        // показ поля - модуль устройства
+        fun showModuleDropdown(moduleType: String, selectedText: String? = null, enabled: Boolean = true) {
+            moduleTypeAutoCompleteTextView.setAdapter(moduleTypeAdaptersMap.getOrDefault(moduleType, null))
+            moduleTypeAutoCompleteTextView.setText(selectedText, false)
+            moduleTypeInputLayout.visibility = View.VISIBLE
+            moduleTypeInputLayout.isEnabled = enabled
+            moduleTextView.visibility = View.VISIBLE
+        }
+        // скрыть поле - модуль устройства
+        fun hideModuleDropdown() {
+            moduleTypeInputLayout.visibility = View.GONE
+            moduleTextView.visibility = View.GONE
+            moduleTypeAutoCompleteTextView.setText("")
+        }
+
+        hideModuleDropdown()
+
+        deviceTypeAutoCompleteTextView.setOnItemClickListener { parent, view, position, id ->
+            val selected = parent.getItemAtPosition(position).toString()
+            if(moduleTypeAdaptersMap.containsKey(selected)) showModuleDropdown(selected) else hideModuleDropdown()
+        }
+
+        val deviceTypeId  = currentDevice.getValue("device_type_id").toString().toDouble().toInt()
+        // Индекс в адаптере по device_type_id
+        val adapterIndex = when {
+            deviceTypeId == 1       -> 0
+            deviceTypeId <= 14      -> deviceTypeId - 2
+            else                    -> deviceTypeId - 4
+        }
+        val deviceTypeName = arrayAdapter.getItem(adapterIndex).toString()
+        deviceTypeAutoCompleteTextView.setText(deviceTypeName, false)
+
+        var moduleTypeId = currentDevice.getValue("module_type_id")
+        when (deviceTypeId) {
+            3    -> {
+                val resId = R.array.module_type_names
+                showModuleDropdown(deviceTypeName, enabled = false)
+                if (moduleTypeId != null){
+                    moduleTypeId = moduleTypeId.toString().toDouble().toInt()
+                    val text = resources.getStringArray(resId).getOrNull(moduleTypeId)
+                    moduleTypeAutoCompleteTextView.setText(text, false)
+                }
+            }
+            6    -> {
+                val fileFormat = currentDevice.getOrDefault("file_format", "").toString()
+                showModuleDropdown(deviceTypeName, selectedText = fileFormat, enabled = false)
+            }
+            17   -> {
+                val resId = R.array.unmanned_system_names
+                showModuleDropdown(deviceTypeName, enabled = false)
+                if (moduleTypeId != null){
+                    moduleTypeId = moduleTypeId.toString().toDouble().toInt()
+                    val text = resources.getStringArray(resId).getOrNull(moduleTypeId)
+                    moduleTypeAutoCompleteTextView.setText(text, false)
+                }
+            }
+        }
 
         name = view.findViewById(R.id.editNameText)
         description = view.findViewById(R.id.editDescriptionText)
@@ -114,7 +186,7 @@ class DeviceInfoFragment : Fragment() {
         if(currentDevice.getValue("is_verified")!= 0.0)
             isCertified.isChecked = true
 
-        val saveChangesButton = view.findViewById<androidx.appcompat.widget.AppCompatButton>(R.id.editPasswordButton)
+        val saveChangesButton = view.findViewById<androidx.appcompat.widget.AppCompatButton>(R.id.addDeviceButton)
         saveChangesButton.setOnClickListener{
             if(!requireContext().isInternetAvailable()){
                 Handler(Looper.getMainLooper()).post{
@@ -130,28 +202,13 @@ class DeviceInfoFragment : Fragment() {
                 saveChanges= false
 
                 val newDeviceInfo = buildDeviceInfo()
+                Log.d("newDeviceInfo123", "${newDeviceInfo}")
                 if (newDeviceInfo == null){
                     val message = Toast.makeText(view.context,"Не удалось сохранить данные!",
                         Toast.LENGTH_SHORT)
                     message.show()
                     return@setOnClickListener
                 }
-
-/*                newDeviceInfo["id"] = currentDevice.getValue("id_device").toString().toDouble().toInt()
-                newDeviceInfo["module_type_id"] = currentDevice.getOrDefault("module_type_id", 1)?.toString()?.toDoubleOrNull()?.toInt()
-                newDeviceInfo["device_type_id"] = currentDevice.getValue("device_type_id").toString().toDouble().toInt()
-
-                newDeviceInfo["name"] = name.text.toString()
-                newDeviceInfo["description"] = description.text.toString()
-                newDeviceInfo["serial_number"] = serialNum.text.toString()
-                newDeviceInfo["location_description"] = location.text.toString()
-                newDeviceInfo["latitude"] = latitude.text.toString().toDouble()
-                newDeviceInfo["longitude"] = longitude.text.toString().toDouble()
-                newDeviceInfo["tz"] = timeZone.text.toString().toDouble()
-                newDeviceInfo["time_not_online"] = timeNotOnline.text.toString().toDouble()
-                newDeviceInfo["is_public"] = if (isPublic.isChecked) 1.0 else 0.0
-                newDeviceInfo["is_allow_download"] = if (allowDownload.isChecked) 1.0 else 0.0
-                newDeviceInfo["is_verified"] = if (isCertified.isChecked) 1.0 else 0.0*/
 
                 val thread =Thread {
                     try {
@@ -196,30 +253,44 @@ class DeviceInfoFragment : Fragment() {
             allowDownload.isEnabled = !allowDownload.isEnabled
             isCertified.isEnabled = !isCertified.isEnabled
 
-            accountSectionsAutoCompleteTextView.isEnabled = !accountSectionsAutoCompleteTextView.isEnabled
+            deviceTypeAutoCompleteTextView.isEnabled = !deviceTypeAutoCompleteTextView.isEnabled
+            moduleTypeAutoCompleteTextView.isEnabled = !moduleTypeAutoCompleteTextView.isEnabled
         }
     }
 
     // Построение DeviceInfo с обработкой null
     private fun buildDeviceInfo(): DeviceInfo? {
         return try {
+            val deviceTypeId = arrayAdapter.getPosition(deviceTypeAutoCompleteTextView.text.toString())
+            val newDeviceTypeId = when {
+                deviceTypeId == 0       -> 1
+                deviceTypeId <= 12      -> deviceTypeId + 2
+                else                    -> deviceTypeId + 4
+            }
+            var moduleTypeId: Int? = null
+            var fileFormat = "undefined"
+            when (newDeviceTypeId) {
+                3    -> moduleTypeId = resources.getStringArray(R.array.module_type_names).indexOf(moduleTypeAutoCompleteTextView.text.toString())
+                6    -> fileFormat = moduleTypeAutoCompleteTextView.text.toString()
+                17   -> moduleTypeId = resources.getStringArray(R.array.unmanned_system_names).indexOf(moduleTypeAutoCompleteTextView.text.toString())
+            }
             DeviceInfo(
-                id             = currentDevice["id_device"]?.toString()?.toDoubleOrNull()?.toInt()
+                id = currentDevice["id_device"]?.toString()?.toDoubleOrNull()?.toInt()
                     ?: return null.also { Log.e("DeviceInfo", "id_device is null") },
-                name           = name.text.toString().trim(),
-                description    = description.text.toString().trim(),
-                serialNumber   = serialNum.text.toString().trim(),
+                name = name.text.toString().trim(),
+                description = description.text.toString().trim(),
+                serialNumber = serialNum.text.toString().trim(),
                 locationDescription = location.text.toString().trim(),
-                latitude       = latitude.text.toString().toDoubleOrNull() ?: 0.0,
-                longitude      = longitude.text.toString().toDoubleOrNull() ?: 0.0,
-                deviceTypeId   = currentDevice["device_type_id"]?.toString()?.toDoubleOrNull()?.toInt()
-                    ?: return null.also { Log.e("DeviceInfo", "device_type_id is null") },
-                moduleTypeId   = currentDevice["module_type_id"]?.toString()?.toDoubleOrNull()?.toInt() ?: 1,
-                tz             = timeZone.text.toString().toDoubleOrNull()?.toInt() ?: 0,
-                timeNotOnline  = timeNotOnline.text.toString().toDoubleOrNull()?.toInt() ?: 0,
-                isPublic       = isPublic.isChecked,
+                latitude = latitude.text.toString().toDoubleOrNull() ?: 0.0,
+                longitude = longitude.text.toString().toDoubleOrNull() ?: 0.0,
+                deviceTypeId = newDeviceTypeId,
+                moduleTypeId = moduleTypeId,
+                tz = timeZone.text.toString().toDoubleOrNull()?.toInt() ?: 0,
+                timeNotOnline = timeNotOnline.text.toString().toDoubleOrNull()?.toInt() ?: 0,
+                isPublic = isPublic.isChecked,
                 isAllowDownload = allowDownload.isChecked,
-                isVerified     = isCertified.isChecked
+                isVerified = isCertified.isChecked,
+                fileFormat = fileFormat
             )
         } catch (e: Exception) {
             Log.e("buildDeviceInfo", "Failed to build DeviceInfo", e)

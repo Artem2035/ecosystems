@@ -34,7 +34,7 @@ class ImageAnnotationDialog(
     private lateinit var btnRectangle: MaterialButton
     private lateinit var btnPolygon: MaterialButton
     private lateinit var btnMagicWand: MaterialButton
-    private var wandTolerance: Float = 10f
+    private var wandTolerance: Float = 15f
 
     private var originalBitmap: Bitmap? = null
 

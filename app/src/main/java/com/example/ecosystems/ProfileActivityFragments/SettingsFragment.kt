@@ -14,18 +14,10 @@ import android.widget.Toast
 import androidx.appcompat.widget.AppCompatButton
 import androidx.appcompat.widget.SwitchCompat
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.lifecycleScope
 import com.example.ecosystems.MainActivity
 import com.example.ecosystems.R
 import com.example.ecosystems.network.ApiService
 import com.example.ecosystems.utils.isInternetAvailable
-import com.google.gson.Gson
-import kotlinx.coroutines.launch
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
-import java.io.IOException
 
 class SettingsFragment : Fragment() {
     private val api: ApiService = ApiService()
@@ -56,7 +48,7 @@ class SettingsFragment : Fragment() {
         if(personalAccountData.getValue("is_send_emails_not_devices_link") == 1)
             sendEmail.isChecked = true
 
-        val saveChangesButton: AppCompatButton = view.findViewById(R.id.editPasswordButton)
+        val saveChangesButton: AppCompatButton = view.findViewById(R.id.addDeviceButton)
         saveChangesButton.setOnClickListener {
             if(!requireContext().isInternetAvailable()){
                 Handler(Looper.getMainLooper()).post{

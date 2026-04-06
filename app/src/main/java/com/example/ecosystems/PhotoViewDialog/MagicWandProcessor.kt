@@ -17,11 +17,11 @@ import kotlin.math.abs
 object MagicWandProcessor {
 
     private const val TAG = "MagicWand"
-
+    private var maxSize = 1500
     fun apply(
         bitmap: Bitmap,
         imagePoint: PointF,
-        tolerance: Double = 10.0
+        tolerance: Double = 15.0
     ): List<PointF>? {
 
         if (imagePoint.x < 0 || imagePoint.y < 0 ||
@@ -30,7 +30,7 @@ object MagicWandProcessor {
             return null
         }
 
-        val scaleFactor = calculateScaleFactor(bitmap.width, bitmap.height, maxSize = 1500)
+        val scaleFactor = calculateScaleFactor(bitmap.width, bitmap.height, maxSize)
         val scaledBitmap = if (scaleFactor < 1.0f) {
             Bitmap.createScaledBitmap(
                 bitmap,
@@ -169,12 +169,13 @@ object MagicWandProcessor {
         return maskToPolygon(connectedMask)
     }
 
-    /**
-     * Построить маску пикселей похожих на seed цвет.
-     * Используем взвешенное расстояние в RGB — больший вес для
-     * относительного соотношения каналов (не абсолютной яркости).
-     * Это позволяет выделять тёмную зелень так же как светлую.
+
+/*      Построить маску пикселей похожих на seed цвет.
+      Используем взвешенное расстояние в RGB — больший вес для
+     относительного соотношения каналов (не абсолютной яркости).
+     Это позволяет выделять тёмную зелень так же как светлую.
      */
+
     private fun buildSimilarityMask(
         src: Mat,
         seedR: Double,

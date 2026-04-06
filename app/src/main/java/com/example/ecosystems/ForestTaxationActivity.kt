@@ -61,15 +61,16 @@ class ForestTaxationActivity : AppCompatActivity() {
     private lateinit var token:String
 
     private var currentCameraPosition: CameraPosition = CameraPosition(Point(61.78932, 34.35919),
-        17f, 0.0f, 0.0f) //57.907, 36.58 4.67f
-    private lateinit var clusterizedCollection: ClusterizedPlacemarkCollection
-/*    private lateinit var libraryImagesCollection: ClusterizedPlacemarkCollection
-    private lateinit var currentLibraryImagesClusterListener:ClusterListener*/
+        17f, 0.0f, 0.0f)
 
-    /*список кластеризуемых коллекции точек*/
+    /*список кластеризуемых коллекции точек, слои типа libraryImages*/
     private var libraryImagesCollectionList: MutableList<ClusterizedPlacemarkCollection> = mutableListOf()
     /*список ClusterListener для кластеризуемых коллекции точек*/
     private var libraryImagesClusterListenerList: MutableList<ClusterListener> = mutableListOf()
+    /*список кластеризуемых коллекции слоя типа points*/
+    private var pointsCollectionList: MutableList<ClusterizedPlacemarkCollection> = mutableListOf()
+    /*список ClusterListener для кластеризуемых коллекции точек для списка слоев типа points*/
+    private var pointsClusterListenerList: MutableList<ClusterListener> = mutableListOf()
 
     private var isSelecting = false
     private val selectedPoints = mutableListOf<Point>()
@@ -89,8 +90,10 @@ class ForestTaxationActivity : AppCompatActivity() {
     private var plansMap: MutableMap<String, Map<String, Any?>> = mutableMapOf()
     /*набор полей и точек координат, где было сделано фото*/
     private var planLibraryImagesMap: MutableMap<String, MutableMap<String, Any?>> = mutableMapOf()
+    /*словарь для всех слоев с точками, ключ - uuid*/
+    private var planPointsMap: MutableMap<String, MutableMap<String, Any?>> = mutableMapOf()
     /*слои с точками*/
-    private var pointsLayerMap: MutableMap<String, Any?> = mutableMapOf()
+    //private var pointsLayerMap: MutableMap<String, Any?> = mutableMapOf()
     @SuppressLint("MissingInflatedId")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -232,6 +235,9 @@ class ForestTaxationActivity : AppCompatActivity() {
     fun startTreesManagementActivity(view: View)
     {
         val intent =  Intent(this,TreesManagementActivity::class.java)
+        val bundle = Bundle()
+        bundle.putSerializable("planPointsMap", planPointsMap as java.io.Serializable)
+        intent.putExtras(bundle)
         startActivity(intent)
     }
 
@@ -285,6 +291,7 @@ class ForestTaxationActivity : AppCompatActivity() {
 
     var selectedPlan: Plan? = null
     private fun showSearchPlanDialog(){
+        tempPlanList.clear()
         tempPlanList.addAll(planList)
 
         val inflater = layoutInflater
@@ -360,18 +367,18 @@ class ForestTaxationActivity : AppCompatActivity() {
                     val result: Map<String, Any?> = mapAdapter.fromJson(api.loadPlanLayers(token, selectedPlan!!.planUUID))
                     Log.d("result", "${result}")
                     listOfPlanLayers = result.get("layers") as MutableList<Map<String, Any?>>
-                    pointsLayerMap.clear()
+                    planPointsMap.clear()
+                    pointsCollectionList.clear()
+                    pointsClusterListenerList.clear()
                     planLibraryImagesMap.clear()
                     libraryImagesCollectionList.clear()
                     libraryImagesClusterListenerList.clear()
                     for(layer in listOfPlanLayers){
                         if(layer.get("type") == "points"){
-                            layer.forEach { (key, value) ->
-                                if(value is Map<*, *> || value is List<*>)
-                                    pointsLayerMap[key] = deepCopy(value as Map<String, Any?>)
-                                else
-                                    pointsLayerMap[key] = value
-                            }
+                            val uuid = layer["uuid"].toString()
+                            planPointsMap[uuid] = layer.entries.associate { (key, value) ->
+                                key to deepCopy(value)
+                            }.toMutableMap()
                         }
                         if(layer.get("type") == "library_images"){
                             val uuid = layer.get("uuid").toString()
@@ -385,7 +392,6 @@ class ForestTaxationActivity : AppCompatActivity() {
                         }
                     }
                     DrawObjectsOnMap()
-                    //if(!pointsLayerMap.isEmpty())
                 }
                 catch (exception: Exception)
                 {
@@ -460,8 +466,6 @@ class ForestTaxationActivity : AppCompatActivity() {
         Log.d("imageUri", "$data")
         val fileName = data.get("filename").toString()
         val uuid = data.get("uuid").toString()
-/*        val message = Toast.makeText(this,"Это дерево ${data}",Toast.LENGTH_SHORT)
-        message.show()*/
         Log.d("fileName", "${BASE_URL}api/v1/orthophotoplans/layers/images/image/${uuid}/$fileName")
         val dialog = ImageAnnotationDialog(
                 context = this,
@@ -527,23 +531,32 @@ class ForestTaxationActivity : AppCompatActivity() {
             imageProvider = ImageProvider.fromBitmap(bitmap)
             val mapObjects = mapView.mapWindow.map.mapObjects
 
-            if(!pointsLayerMap.isEmpty()){
-                // Создаём коллекцию с кластеризацией
-                clusterizedCollection = mapObjects.addClusterizedPlacemarkCollection(clusterListener)
+            if(!planPointsMap.isEmpty()){
+                planPointsMap.forEach { uuid, planPointsMap  ->
+                    var colorInt =  Color.parseColor("#FFA500")
+                    if(planPointsMap.get("color") != null)
+                        colorInt = Color.parseColor(planPointsMap.get("color").toString())
+                    val tempLibraryImagesClusterListener = createLibraryImagesClusterListener(colorInt)
+                    val tempLibraryImagesCollection = mapObjects.addClusterizedPlacemarkCollection(tempLibraryImagesClusterListener)
 
-                val data  = pointsLayerMap.get("data") as Map<String, Any?>
-                val points = data.get("points") as List<Map<String, Any?>>
-                points.forEach {point ->
-                    clusterizedCollection.addPlacemark().apply {
-                        geometry = Point(point.get("lat") as Double, point.get("lng") as Double)
-                        setUserData(point.get("id"))
-                        setIcon(imageProvider)
-                        addTapListener(globalListener)
+                    val data  = planPointsMap.get("data") as Map<String, Any?>
+                    val points = data.get("points") as List<Map<String, Any?>>
+                    points.forEach {point ->
+                        tempLibraryImagesCollection.addPlacemark().apply {
+                            geometry = Point(point.get("lat") as Double, point.get("lng") as Double)
+                            setUserData(point.get("id"))
+                            setIcon(clusterIcon(bgColor = colorInt, textColor = 0xFFFFFFFF.toInt()))
+                            addTapListener(globalListener)
+                        }
                     }
+                    pointsClusterListenerList.add(tempLibraryImagesClusterListener)
+                    pointsCollectionList.add(tempLibraryImagesCollection)
                 }
-                // Запускаем кластеризацию
-                clusterizedCollection.clusterPlacemarks(50.0, 17)
+                pointsCollectionList.forEach {
+                    it.clusterPlacemarks(50.0, 17)
+                }
             }
+
             if(!planLibraryImagesMap.isEmpty()){
                 Log.d("planLibraryImagesMap", "${planLibraryImagesMap}")
                 planLibraryImagesMap.forEach { uuid, planLibraryImagesMap  ->
@@ -576,19 +589,16 @@ class ForestTaxationActivity : AppCompatActivity() {
                 libraryImagesCollectionList.forEach {
                     it.clusterPlacemarks(50.0, 17)
                 }
-                //libraryImagesCollection.clusterPlacemarks(50.0, 17)
             }
         }
     }
 }
 
-fun deepCopy(map: Map<String, Any?>): Map<String, Any?> {
-    return map.mapValues { (_, value) ->
-        when (value) {
-            is Map<*, *> -> deepCopy(value as Map<String, Any?>)
-            is List<*> -> value.toList()
-            else -> value
-        }
+fun deepCopy(value: Any?): Any? {
+    return when (value) {
+        is Map<*, *> -> (value as Map<String, Any?>).mapValues { (_, v) -> deepCopy(v) }
+        is List<*> -> value.map { deepCopy(it) }
+        else -> value
     }
 }
 

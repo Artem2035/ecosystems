@@ -71,6 +71,7 @@ class DevicesManagmentFragment : Fragment() {
         devicesManagmentRecyclerView = view.findViewById(R.id.devices_managment_recycler_view)
         devicesManagmentRecyclerView.layoutManager = LinearLayoutManager(view.context)
 
+        tempDevicesList.clear()
         tempDevicesList.addAll(devicesList)
         val deviceAdapter = DeviceManagementItemAdapter(tempDevicesList, mapOfDevices, token)
         devicesManagmentRecyclerView.adapter = deviceAdapter
@@ -101,7 +102,7 @@ class DevicesManagmentFragment : Fragment() {
             }
         })
 
-        val addDeviceButton = view.findViewById<androidx.appcompat.widget.AppCompatButton>(R.id.editPasswordButton)
+        val addDeviceButton = view.findViewById<androidx.appcompat.widget.AppCompatButton>(R.id.addDeviceButton)
         addDeviceButton.setOnClickListener {
             if(!requireContext().isInternetAvailable()){
                 Handler(Looper.getMainLooper()).post{

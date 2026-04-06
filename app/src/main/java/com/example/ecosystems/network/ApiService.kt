@@ -174,6 +174,7 @@ class ApiService(private val client: OkHttpClient = OkHttpClient.Builder().build
             .addFormDataPart("longitude",           deviceInfo.longitude.toString())
             .addFormDataPart("device_type_id",      deviceInfo.deviceTypeId.toString())
             .addFormDataPart("module_type_id",      deviceInfo.moduleTypeId.toString())
+            .addFormDataPart("file_format", deviceInfo.fileFormat)
             .addFormDataPart("tz",                  deviceInfo.tz.toString())
             .addFormDataPart("time_not_online",     deviceInfo.timeNotOnline.toString())
             .addFormDataPart("is_public",           if (deviceInfo.isPublic) "1" else "0")

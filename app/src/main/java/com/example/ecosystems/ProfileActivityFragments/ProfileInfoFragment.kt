@@ -63,7 +63,7 @@ class ProfileInfoFragment : Fragment() {
         phone.setText(personalAccountData.getValue("phone").toString())
         organization.setText(personalAccountData.getValue("organization").toString())
 
-        val saveChangesButton: AppCompatButton = view.findViewById(R.id.editPasswordButton)
+        val saveChangesButton: AppCompatButton = view.findViewById(R.id.addDeviceButton)
         saveChangesButton.setOnClickListener {
             if(!requireContext().isInternetAvailable()){
                 Handler(Looper.getMainLooper()).post{

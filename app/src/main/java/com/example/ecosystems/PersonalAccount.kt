@@ -3,7 +3,6 @@ package com.example.ecosystems
 import SecurePersonalAccountManager
 import SecureTokenManager
 import android.content.Intent
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -13,6 +12,7 @@ import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import com.example.ecosystems.network.ApiService
 import com.example.ecosystems.utils.isInternetAvailable
@@ -68,7 +68,7 @@ class PersonalAccount : AppCompatActivity() {
             }
         }
 
-        val accountSectionsAutoCompleteTextView = findViewById<AutoCompleteTextView>(R.id.accountSectionsAutoCompleteTextView)
+        val accountSectionsAutoCompleteTextView = findViewById<AutoCompleteTextView>(R.id.deviceTypeAutoCompleteTextView)
         val accountSectionNames = resources.getStringArray(R.array.account_section_names)
         val arrayAdapter = ArrayAdapter(this,R.layout.dropdown_item,accountSectionNames)
         accountSectionsAutoCompleteTextView.setAdapter(arrayAdapter)

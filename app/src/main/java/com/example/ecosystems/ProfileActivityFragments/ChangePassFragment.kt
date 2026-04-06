@@ -2,7 +2,6 @@ package com.example.ecosystems.ProfileActivityFragments
 
 import SecurePersonalAccountManager
 import SecureTokenManager
-import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -14,19 +13,9 @@ import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.widget.AppCompatButton
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.lifecycleScope
-import com.example.ecosystems.MainActivity
 import com.example.ecosystems.R
 import com.example.ecosystems.network.ApiService
 import com.example.ecosystems.utils.isInternetAvailable
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
-import kotlinx.coroutines.launch
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
-import java.io.IOException
 
 /**
  * A simple [Fragment] subclass.
@@ -63,7 +52,7 @@ class ChangePassFragment : Fragment() {
         val editNewPassRepeat = view.findViewById<EditText>(R.id.editNewPassRepeat)
 
 
-        val changePasswordButton: AppCompatButton = view.findViewById(R.id.editPasswordButton)
+        val changePasswordButton: AppCompatButton = view.findViewById(R.id.addDeviceButton)
         changePasswordButton.setOnClickListener {
 
             if(!requireContext().isInternetAvailable()){

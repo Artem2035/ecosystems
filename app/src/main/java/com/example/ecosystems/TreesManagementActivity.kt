@@ -4,12 +4,13 @@ import android.annotation.SuppressLint
 import android.content.DialogInterface
 import android.content.Intent
 import android.graphics.Color
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.widget.Button
 import android.widget.EditText
 import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -18,15 +19,34 @@ import com.example.ecosystems.TreesManagement.TreeAdapter
 
 class TreesManagementActivity : AppCompatActivity() {
     private lateinit var adapter: TreeAdapter
+
+    //private var planPointsMap: MutableMap<String, MutableMap<String, Any?>> = mutableMapOf()
+    private var treesList: MutableList<TreeRow> = mutableListOf()
     @SuppressLint("MissingInflatedId")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_trees_management)
 
+        val planPointsMap = intent.extras
+            ?.getSerializable("planPointsMap") as? MutableMap<String, MutableMap<String, Any?>>
+        Log.d("planPointsMap", "$planPointsMap")
+        if(!planPointsMap?.isEmpty()!!){
+            planPointsMap.forEach { uuid, planPoints ->
+                Log.d("planPoints", "$planPoints")
+                val data = planPoints.get("data") as? Map<*, *>
+                Log.d("data123", "$data")
+                val points = data?.get("points") as? List<Map<*, *>> //as? MutableList<MutableMap<String, Any?>>
+                Log.d("points", "$points")
+                points?.forEach { point ->
+                    treesList.add(TreeRow(point.get("id").toString().toDouble().toInt()))
+                }
+            }
+        }
+
         val recycler = findViewById<RecyclerView>(R.id.tableRecycler)
         recycler.layoutManager = LinearLayoutManager(this)
 
-        adapter = TreeAdapter(mutableListOf())
+        adapter = TreeAdapter(treesList)
         recycler.adapter = adapter
 
         val addTreeButton: Button = findViewById(com.example.ecosystems.R.id.addTreeButton)
