@@ -14,9 +14,7 @@ class OsmTileProvider(private val TileFileName: String) : TileProvider {
         etag: String
     ): RawTile {
 
-        //val url = "https://smartecosystems.petrsu.ru/api/v1/orthophotoplans/tile_file/148f3abd-a16a-4a63-93b9-503fbe403f1b/${tileId.z}/${tileId.x}/${tileId.y}.png"
         val url = "https://smartecosystems.petrsu.ru/api/v1/orthophotoplans/tile_file/${TileFileName}/${tileId.z}/${tileId.x}/${tileId.y}.png"
-        //Log.d("tile", "${TileFileName} ${tileId.z}/${tileId.x}/${tileId.y}.png")
         return try {
             val connection = java.net.URL(url).openConnection() as java.net.HttpURLConnection
             connection.connectTimeout = 5000

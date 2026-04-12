@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#80000000">
+
+    <!-- Центрированная карточка -->
+    <LinearLayout
+        android:layout_width="280dp"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:orientation="vertical"
+        android:padding="24dp"
+        android:background="@android:drawable/dialog_holo_light_frame"
+        android:elevation="8dp"
+        android:gravity="center">
+
+        <!-- Иконка загрузки -->
+        <ProgressBar
+            android:id="@+id/progressBar"
+            style="?android:attr/progressBarStyleLarge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+
+        <!-- Заголовок -->
+        <TextView
+            android:id="@+id/titleText"
+            android:layout_marginTop="16dp"
+            android:text="Загрузка данных"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:textColor="#000000"
+            android:gravity="center"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
+        <!-- Текст прогресса -->
+        <TextView
+            android:id="@+id/progressText"
+            android:layout_marginTop="12dp"
+            android:text="Прогресс скачивания данных ГИС объектов: 0/0"
+            android:textSize="14sp"
+            android:textColor="#444444"
+            android:gravity="center"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
+        <!-- Линейный прогресс -->
+        <ProgressBar
+            android:id="@+id/progressBarHorizontal"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_marginTop="16dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:max="100"
+            android:progress="0"/>
+
+    </LinearLayout>
+
+</FrameLayout>

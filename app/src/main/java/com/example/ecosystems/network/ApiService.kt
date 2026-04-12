@@ -206,11 +206,6 @@ class ApiService(private val client: OkHttpClient = OkHttpClient.Builder().build
             .header("Connection", "keep-alive")
             .build()
 
-/*        client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) throw IOException("Unexpected code $response")
-            response.body!!.string()
-        }*/
-
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful)
                 throw IOException("Ошибка: ${response.code}")
@@ -230,16 +225,23 @@ class ApiService(private val client: OkHttpClient = OkHttpClient.Builder().build
             .build()
 
         client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) throw IOException("Unexpected code $response")
-            response.body!!.string()
-        }
-
-        client.newCall(request).execute().use { response ->
             if (!response.isSuccessful)
                 throw IOException("Ошибка: ${response.code}")
 
             return response.body!!.string()
         }
+    }
+
+    fun loadPlanLayersRaw(token: String, uuid: String): okhttp3.ResponseBody {
+        val request = Request.Builder()
+            .url("${BASE_URL}api/v1/orthophotoplans/layers/${uuid}")
+            .header("Authorization", "Bearer $token")
+            .header("Accept", "*/*")
+            .build()
+
+        val response = client.newCall(request).execute()
+        if (!response.isSuccessful) throw IOException("Ошибка: ${response.code}")
+        return response.body ?: throw IOException("Пустое тело ответа")
     }
 
     /*регистрация нового аккаунта*/
@@ -271,5 +273,8 @@ class ApiService(private val client: OkHttpClient = OkHttpClient.Builder().build
             return result.getOrDefault("description", "Запрос выполнен!").toString()
         }
     }
+    /*загрузить данные всех гис объектов, всех слоев (в том числе точки, и фото) в базу данных*/
+    fun loadPlansToDB(token: String){
 
+    }
 }
