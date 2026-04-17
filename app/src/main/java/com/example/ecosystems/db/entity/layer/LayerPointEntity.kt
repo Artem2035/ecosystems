@@ -1,4 +1,4 @@
-package com.example.ecosystems.db.entity
+package com.example.ecosystems.db.entity.layer
 
 import androidx.room.Entity
 import androidx.room.ForeignKey
@@ -10,8 +10,8 @@ import androidx.room.PrimaryKey
         entity = LayerEntity::class,
         parentColumns = ["id"],        // LayerEntity.id
         childColumns = ["layerId"],  // ImageEntity.gisObjectLayerId
-        onDelete = ForeignKey.CASCADE, // удалить layer → удалятся все images
-        onUpdate = ForeignKey.CASCADE  // обновить id → обновится везде
+        onDelete = ForeignKey.CASCADE, // удалятся все images
+        onUpdate = ForeignKey.CASCADE  // обновить id  везде
     )],)
 data class LayerPointEntity(
     @PrimaryKey val id: Int,
@@ -19,7 +19,7 @@ data class LayerPointEntity(
     val lat: Double,
     val lng: Double,
     val num: Int,
-    val valuesJson: String,   // values: {} сериализуется в JSON-строку через TypeConverter
+    val valuesJson: String,
     val createdAt: Long,
     val updatedAt: Long
 )

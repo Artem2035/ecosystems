@@ -2,7 +2,7 @@ package com.example.ecosystems.db.relation
 
 import androidx.room.Embedded
 import androidx.room.Relation
-import com.example.ecosystems.db.entity.LayerEntity
+import com.example.ecosystems.db.entity.layer.LayerEntity
 import com.example.ecosystems.db.entity.PlanEntity
 import com.example.ecosystems.db.entity.PlanFileEntity
 

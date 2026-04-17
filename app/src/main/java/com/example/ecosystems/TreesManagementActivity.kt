@@ -12,40 +12,82 @@ import android.widget.EditText
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.ecosystems.DataClasses.TreeRow
 import com.example.ecosystems.TreesManagement.TreeAdapter
+import com.example.ecosystems.db.AppDatabase
+import com.example.ecosystems.db.dao.LayerEntityDao
+import com.example.ecosystems.db.dao.PlanEntityDao
+import com.example.ecosystems.db.repository.LayerRepository
+import com.example.ecosystems.db.repository.PlanRepository
+import com.example.ecosystems.utils.isInternetAvailable
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 class TreesManagementActivity : AppCompatActivity() {
     private lateinit var adapter: TreeAdapter
 
     //private var planPointsMap: MutableMap<String, MutableMap<String, Any?>> = mutableMapOf()
     private var treesList: MutableList<TreeRow> = mutableListOf()
+    private lateinit var layerDao: LayerEntityDao
+    private lateinit var layerRepository: LayerRepository
+    private lateinit var planRepository: PlanRepository
+    private lateinit var planDao: PlanEntityDao
+
     @SuppressLint("MissingInflatedId")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_trees_management)
 
+        layerDao = AppDatabase.getInstance(this).layerDao()
+        planDao = AppDatabase.getInstance(this).planDao()
+        layerRepository = LayerRepository(layerDao)
+        planRepository = PlanRepository(planDao)
+
         val planPointsMap = intent.extras
             ?.getSerializable("planPointsMap") as? MutableMap<String, MutableMap<String, Any?>>
-        Log.d("planPointsMap", "$planPointsMap")
-        if(!planPointsMap?.isEmpty()!!){
-            planPointsMap.forEach { uuid, planPoints ->
-                Log.d("planPoints", "$planPoints")
-                val data = planPoints.get("data") as? Map<*, *>
-                Log.d("data123", "$data")
-                val points = data?.get("points") as? List<Map<*, *>> //as? MutableList<MutableMap<String, Any?>>
-                Log.d("points", "$points")
-                points?.forEach { point ->
-                    treesList.add(TreeRow(point.get("id").toString().toDouble().toInt()))
-                }
-            }
-        }
+        val planId =  intent.extras?.getSerializable("planId").toString().toInt()
 
         val recycler = findViewById<RecyclerView>(R.id.tableRecycler)
         recycler.layoutManager = LinearLayoutManager(this)
 
+        if(isInternetAvailable()){
+            Log.d("planPointsMap", "$planPointsMap")
+            if(!planPointsMap?.isEmpty()!!){
+                planPointsMap.forEach { uuid, planPoints ->
+                    Log.d("planPoints", "$planPoints")
+                    val data = planPoints.get("data") as? Map<*, *>
+                    Log.d("data123", "$data")
+                    val points = data?.get("points") as? List<Map<*, *>> //as? MutableList<MutableMap<String, Any?>>
+                    Log.d("points", "$points")
+                    points?.forEach { point ->
+                        treesList.add(TreeRow(point.get("id").toString().toDouble().toInt()))
+                    }
+                }
+            }
+        }
+        else{
+            lifecycleScope.launch{
+                val plan = planRepository.getPlanData(planId).first()
+                plan.forEach{
+                    it.layers.forEach {layer->
+                        when(layer.type){
+                            "points" -> {
+                                val pointList = layerDao.getPointsByLayerId(planId).first()
+                                pointList.forEach { point ->
+                                    treesList.add(TreeRow(point.id))
+                                }
+                            }
+                        }
+                    }
+                }
+                adapter = TreeAdapter(treesList)
+                recycler.adapter = adapter
+            }
+        }
+        
         adapter = TreeAdapter(treesList)
         recycler.adapter = adapter
 

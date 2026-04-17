@@ -10,6 +10,7 @@ import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.ResponseBody
 import java.io.IOException
 
 class ApiService(private val client: OkHttpClient = OkHttpClient.Builder().build(),
@@ -274,7 +275,16 @@ class ApiService(private val client: OkHttpClient = OkHttpClient.Builder().build
         }
     }
     /*загрузить данные всех гис объектов, всех слоев (в том числе точки, и фото) в базу данных*/
-    fun loadPlansToDB(token: String){
+    fun loadTables(token: String): ResponseBody {
+        val request = Request.Builder()
+            .url("${BASE_URL}api/v1/orthophotoplans/tables?timeoffset=-3")
+            .header("Authorization", "Bearer $token")
+            .header("Accept", "application/json, text/plain, */*")
+            .header("Accept-Language", "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7")
+            .build()
 
+        val response = client.newCall(request).execute()
+        if (!response.isSuccessful) throw IOException("Ошибка: ${response.code}, ${response.message}")
+        return response.body ?: throw IOException("Пустое тело ответа")
     }
 }

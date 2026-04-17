@@ -7,9 +7,11 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
-import com.example.ecosystems.db.entity.LayerEntity
-import com.example.ecosystems.db.entity.LayerImageEntity
-import com.example.ecosystems.db.entity.LayerPointEntity
+import com.example.ecosystems.db.entity.layer.LayerEntity
+import com.example.ecosystems.db.entity.layer.LayerImageEntity
+import com.example.ecosystems.db.entity.layer.LayerPointEntity
+import com.example.ecosystems.db.entity.layer.PointValueEntity
+import com.example.ecosystems.db.relation.LayerPointWithValues
 import com.example.ecosystems.db.relation.LayerWithData
 import kotlinx.coroutines.flow.Flow
 
@@ -28,15 +30,20 @@ interface LayerEntityDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPoints(points: List<LayerPointEntity>)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertPointsValues(pointsValues: List<PointValueEntity>)
+
     @Transaction
     suspend fun insertAllData(
         layers: List<LayerEntity>,
         points: List<LayerPointEntity>,
-        images: List<LayerImageEntity>
+        images: List<LayerImageEntity>,
+        pointsValues: List<PointValueEntity>
     ) {
         insertLayers(layers)
         insertPoints(points)
         insertImages(images)
+        insertPointsValues(pointsValues)
     }
 
     @Update
@@ -82,4 +89,20 @@ interface LayerEntityDao {
 
     @Query("SELECT * FROM layer_points ORDER BY num ASC")
     fun getAllLayerPoints(): Flow<List<LayerPointEntity>>
+
+    @Transaction
+    @Query("SELECT * FROM layer_points WHERE layerId = :layerId")
+    fun getPointsWithValues(layerId: Int): Flow<List<LayerPointWithValues>>?
+
+    @Transaction
+    @Query("SELECT * FROM layer_points")
+    fun getAllPointsWithValues(): Flow<List<LayerPointWithValues>>?
+
+    @Query("SELECT * FROM point_values")
+    fun getAllPointsRaw(): Flow<List<PointValueEntity>>?
+
+    @Transaction
+    @Query("SELECT * FROM layer_points WHERE id = :pointId")
+    fun getPointWithValuesByPointId(pointId: Int): Flow<List<LayerPointWithValues>>?
+
 }

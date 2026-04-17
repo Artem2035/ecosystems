@@ -7,7 +7,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
-import com.example.ecosystems.db.entity.LayerEntity
+import com.example.ecosystems.db.entity.layer.LayerEntity
 import com.example.ecosystems.db.entity.PlanEntity
 import com.example.ecosystems.db.entity.PlanFileEntity
 import com.example.ecosystems.db.relation.PlanWithData

@@ -1,9 +1,19 @@
-package com.example.ecosystems.db.entity
+package com.example.ecosystems.db.entity.layer
 
 import androidx.room.Entity
+import androidx.room.ForeignKey
+import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.example.ecosystems.db.entity.table.TableEntity
 
-@Entity(tableName = "layers")
+@Entity(tableName = "layers",
+    foreignKeys = [ForeignKey(
+        entity = TableEntity::class,
+        parentColumns = ["id"],
+        childColumns = ["tableId"],
+        onDelete = ForeignKey.SET_NULL
+    )],
+    indices = [Index("tableId")])
 data class LayerEntity(
     @PrimaryKey val id: Int,
     val uuid: String,
@@ -22,3 +32,4 @@ data class LayerEntity(
     val cropPercent: Double,
     val syncedAt: Long //локальное поле
 )
+

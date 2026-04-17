@@ -1,4 +1,4 @@
-package com.example.ecosystems.db.entity
+package com.example.ecosystems.db.entity.layer
 
 import androidx.room.Entity
 import androidx.room.ForeignKey
@@ -9,8 +9,8 @@ import androidx.room.PrimaryKey
         entity = LayerEntity::class,
         parentColumns = ["id"],        // LayerEntity.id
         childColumns = ["gisObjectLayerId"],  // ImageEntity.gisObjectLayerId
-        onDelete = ForeignKey.CASCADE, // удалить layer → удалятся все images
-        onUpdate = ForeignKey.CASCADE  // обновить id → обновится везде
+        onDelete = ForeignKey.CASCADE, // удалить layer - удалятся все images
+        onUpdate = ForeignKey.CASCADE  // обновить id везде
     )],)
 data class LayerImageEntity(
     @PrimaryKey val id: Int,

@@ -2,9 +2,9 @@ package com.example.ecosystems.db.relation
 
 import androidx.room.Embedded
 import androidx.room.Relation
-import com.example.ecosystems.db.entity.LayerEntity
-import com.example.ecosystems.db.entity.LayerImageEntity
-import com.example.ecosystems.db.entity.LayerPointEntity
+import com.example.ecosystems.db.entity.layer.LayerEntity
+import com.example.ecosystems.db.entity.layer.LayerImageEntity
+import com.example.ecosystems.db.entity.layer.LayerPointEntity
 
 data class LayerWithData(
     @Embedded val layer: LayerEntity,

@@ -1,9 +1,10 @@
 package com.example.ecosystems.db.repository
 
 import com.example.ecosystems.db.dao.LayerEntityDao
-import com.example.ecosystems.db.entity.LayerEntity
-import com.example.ecosystems.db.entity.LayerImageEntity
-import com.example.ecosystems.db.entity.LayerPointEntity
+import com.example.ecosystems.db.entity.layer.LayerEntity
+import com.example.ecosystems.db.entity.layer.LayerImageEntity
+import com.example.ecosystems.db.entity.layer.LayerPointEntity
+import com.example.ecosystems.db.entity.layer.PointValueEntity
 
 class LayerRepository(private val layerDao: LayerEntityDao) {
 
@@ -25,9 +26,10 @@ class LayerRepository(private val layerDao: LayerEntityDao) {
     suspend fun insertAllData(
         layers: List<LayerEntity>,
         points: List<LayerPointEntity>,
-        images: List<LayerImageEntity>
+        images: List<LayerImageEntity>,
+        pointsValues: List<PointValueEntity>
     ) {
-        layerDao.insertAllData(layers, points, images)
+        layerDao.insertAllData(layers, points, images, pointsValues)
     }
 
     fun getAllLayersWithData() = layerDao.getAllLayersWithData()
@@ -35,8 +37,19 @@ class LayerRepository(private val layerDao: LayerEntityDao) {
     suspend fun getLayerWithData(layerId: Int) =
         layerDao.getLayerWithData(layerId)
 
-    suspend fun getPointsByLayerId(layerId: Int) =
+    fun getPointsWithValues(layerId: Int) =
+        layerDao.getPointsWithValues(layerId)
+
+    fun getAllPointsWithValues() =
+        layerDao.getAllPointsWithValues()
+
+    fun getPointsByLayerId(layerId: Int) =
         layerDao.getPointsByLayerId(layerId)
 
-    suspend fun getAllLayerPoints() = layerDao.getAllLayerPoints()
+    fun getAllLayerPoints() = layerDao.getAllLayerPoints()
+
+    fun getAllPointsRaw() = layerDao.getAllPointsRaw()
+
+    fun getPointWithValuesByPointId(pointId: Int) =
+        layerDao.getPointWithValuesByPointId(pointId)
 }

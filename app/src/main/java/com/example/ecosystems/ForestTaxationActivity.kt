@@ -21,6 +21,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.AppCompatButton
 import androidx.lifecycle.lifecycleScope
 import com.example.ecosystems.DataClasses.Plan
+import com.example.ecosystems.Dialogs.PointDataDialogFragment
 import com.example.ecosystems.PhotoViewDialog.ImageAnnotationDialog
 import com.example.ecosystems.Plan.PlanInfoActivity
 import com.example.ecosystems.Plan.PlanSearchDialogFragment
@@ -28,8 +29,10 @@ import com.example.ecosystems.SettingsDialogFragment.SettingsDialogFragment
 import com.example.ecosystems.db.AppDatabase
 import com.example.ecosystems.db.dao.LayerEntityDao
 import com.example.ecosystems.db.dao.PlanEntityDao
+import com.example.ecosystems.db.dao.TableEntityDao
 import com.example.ecosystems.db.repository.LayerRepository
 import com.example.ecosystems.db.repository.PlanRepository
+import com.example.ecosystems.db.repository.TableRepository
 import com.example.ecosystems.network.ApiService
 import com.example.ecosystems.utils.OsmTileProvider
 import com.example.ecosystems.utils.getBitmapFromVectorDrawable
@@ -101,8 +104,10 @@ class ForestTaxationActivity : AppCompatActivity() {
     /*слои с точками*/
     private lateinit var layerDao: LayerEntityDao
     private lateinit var planDao: PlanEntityDao
+    private lateinit var tableDao: TableEntityDao
     private lateinit var layerRepository: LayerRepository
     private lateinit var planRepository: PlanRepository
+    private lateinit var tableRepository: TableRepository
 
     val formatter = java.text.SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z",
         java.util.Locale.ENGLISH)
@@ -114,8 +119,10 @@ class ForestTaxationActivity : AppCompatActivity() {
 
         layerDao = AppDatabase.getInstance(this).layerDao()
         planDao = AppDatabase.getInstance(this).planDao()
+        tableDao = AppDatabase.getInstance(this).tableDao()
         layerRepository = LayerRepository(layerDao)
         planRepository = PlanRepository(planDao)
+        tableRepository = TableRepository(tableDao)
 
         // Прочитать токен
         val tokenManager = SecureTokenManager(this)
@@ -162,20 +169,25 @@ class ForestTaxationActivity : AppCompatActivity() {
         val planInfoImageButton = findViewById<ImageButton>(R.id.planInfoImageButton)
         // Кнопка для активации режима выбора
         planInfoImageButton.setOnClickListener {
-            if (selectedPlan != null) {
-                val intent =  Intent(this,PlanInfoActivity::class.java)
-                val json = Gson().toJson(listOfPlanLayers)
-                intent.putExtra("listOfPlanLayers", json)
-                startActivity(intent)
-            } else {
-                val message = Toast.makeText(this,"ГИС не выбран!",Toast.LENGTH_SHORT)
+            if(isInternetAvailable()){
+                if (selectedPlan != null) {
+                    val intent =  Intent(this,PlanInfoActivity::class.java)
+                    val json = Gson().toJson(listOfPlanLayers)
+                    intent.putExtra("listOfPlanLayers", json)
+                    startActivity(intent)
+                } else {
+                    val message = Toast.makeText(this,"ГИС не выбран!",Toast.LENGTH_SHORT)
+                    message.show()
+                }
+            }else {
+                val message = Toast.makeText(this,"Пока не доступно в офлайн режиме!",Toast.LENGTH_SHORT)
                 message.show()
             }
         }
 
         val settingsImageButton = findViewById<ImageButton>(R.id.settingsImageButton)
         settingsImageButton.setOnClickListener {
-            val dialog = SettingsDialogFragment(token, layerDao, planDao, layerRepository, planRepository)
+            val dialog = SettingsDialogFragment(token, layerRepository, planRepository, tableRepository)
             dialog.show(supportFragmentManager, "settings_dialog")
         }
 
@@ -273,6 +285,7 @@ class ForestTaxationActivity : AppCompatActivity() {
         val intent =  Intent(this,TreesManagementActivity::class.java)
         val bundle = Bundle()
         bundle.putSerializable("planPointsMap", planPointsMap as java.io.Serializable)
+        bundle.putSerializable("planId", selectedPlan?.plainId)
         intent.putExtras(bundle)
         startActivity(intent)
     }
@@ -552,8 +565,10 @@ class ForestTaxationActivity : AppCompatActivity() {
         val id = mapObject.userData
 
         if(id != null){
-            val message = Toast.makeText(this,"Это дерево ${id}",Toast.LENGTH_SHORT)
-            message.show()
+            val dialog = PointDataDialogFragment(id.toString().toDouble().toInt(), layerRepository)
+            dialog.show(supportFragmentManager, "point_data_dialog")
+            /*val message = Toast.makeText(this,"Это дерево ${id}",Toast.LENGTH_SHORT)
+            message.show()*/
         }
         true
     }
@@ -632,6 +647,7 @@ class ForestTaxationActivity : AppCompatActivity() {
                             tempLibraryImagesCollection.addPlacemark().apply {
                                 geometry = Point(point.get("lat") as Double, point.get("lng") as Double)
                                 setUserData(point.get("id"))
+                                setText(point.get("num").toString())
                                 setIcon(clusterIcon(bgColor = colorInt, textColor = 0xFFFFFFFF.toInt()))
                                 addTapListener(globalListener)
                             }
@@ -699,6 +715,7 @@ class ForestTaxationActivity : AppCompatActivity() {
                                             tempPointsCollection.addPlacemark().apply {
                                                 geometry = Point(point.lat, point.lng)
                                                 setUserData(point.id)
+                                                setText(point.num.toString())
                                                 setIcon(clusterIcon(bgColor = colorInt, textColor = 0xFFFFFFFF.toInt()))
                                                 addTapListener(globalListener)
                                             }
