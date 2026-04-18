@@ -284,7 +284,7 @@ class ForestTaxationActivity : AppCompatActivity() {
     {
         val intent =  Intent(this,TreesManagementActivity::class.java)
         val bundle = Bundle()
-        bundle.putSerializable("planPointsMap", planPointsMap as java.io.Serializable)
+        //bundle.putSerializable("planPointsMap", planPointsMap as java.io.Serializable)
         bundle.putSerializable("planId", selectedPlan?.plainId)
         intent.putExtras(bundle)
         startActivity(intent)
@@ -565,7 +565,7 @@ class ForestTaxationActivity : AppCompatActivity() {
         val id = mapObject.userData
 
         if(id != null){
-            val dialog = PointDataDialogFragment(id.toString().toDouble().toInt(), layerRepository)
+            val dialog = PointDataDialogFragment(id.toString().toDouble().toInt(), layerRepository, tableRepository)
             dialog.show(supportFragmentManager, "point_data_dialog")
             /*val message = Toast.makeText(this,"Это дерево ${id}",Toast.LENGTH_SHORT)
             message.show()*/
@@ -647,7 +647,7 @@ class ForestTaxationActivity : AppCompatActivity() {
                             tempLibraryImagesCollection.addPlacemark().apply {
                                 geometry = Point(point.get("lat") as Double, point.get("lng") as Double)
                                 setUserData(point.get("id"))
-                                setText(point.get("num").toString())
+                                setText((point.get("num") as Number).toInt().toString())
                                 setIcon(clusterIcon(bgColor = colorInt, textColor = 0xFFFFFFFF.toInt()))
                                 addTapListener(globalListener)
                             }
@@ -699,49 +699,47 @@ class ForestTaxationActivity : AppCompatActivity() {
                     if (selectedPlan != null){
                         //val layer = layerDao.getLayerIdByUUID(selectedPlan!!.planUUID)
 
-                        val plan = planRepository.getPlanData(selectedPlan!!.plainId).first()
-                        plan.forEach {
-                            it.layers.forEach {layer->
-                                var colorInt =  Color.parseColor("#FFA500")
-                                if(layer.color != null)
-                                    colorInt = Color.parseColor(layer.color)
-                                val tempPointsClusterListener = createLibraryImagesClusterListener(colorInt)
-                                val tempPointsCollection = mapObjects.addClusterizedPlacemarkCollection(tempPointsClusterListener)
+                        val plan = planRepository.getPlanData(selectedPlan!!.plainId)
+                        plan.layers.forEach {layer->
+                            var colorInt =  Color.parseColor("#FFA500")
+                            if(layer.color != null)
+                                colorInt = Color.parseColor(layer.color)
+                            val tempPointsClusterListener = createLibraryImagesClusterListener(colorInt)
+                            val tempPointsCollection = mapObjects.addClusterizedPlacemarkCollection(tempPointsClusterListener)
 
-                                when(layer.type){
-                                    "points" -> {
-                                        val pointList = layerDao.getPointsByLayerId(layer.id).first()
-                                        pointList.forEach { point ->
-                                            tempPointsCollection.addPlacemark().apply {
-                                                geometry = Point(point.lat, point.lng)
-                                                setUserData(point.id)
-                                                setText(point.num.toString())
-                                                setIcon(clusterIcon(bgColor = colorInt, textColor = 0xFFFFFFFF.toInt()))
-                                                addTapListener(globalListener)
-                                            }
+                            when(layer.type){
+                                "points" -> {
+                                    val pointList = layerDao.getPointsByLayerId(layer.id).first()
+                                    pointList.forEach { point ->
+                                        tempPointsCollection.addPlacemark().apply {
+                                            geometry = Point(point.lat, point.lng)
+                                            setUserData(point.id)
+                                            setText(point.num.toString())
+                                            setIcon(clusterIcon(bgColor = colorInt, textColor = 0xFFFFFFFF.toInt()))
+                                            addTapListener(globalListener)
                                         }
-                                        pointsClusterListenerList.add(tempPointsClusterListener)
-                                        pointsCollectionList.add(tempPointsCollection)
                                     }
-                                    "library_images" -> {
-                                        val imageList = layerDao.getImagesByLayerId(layer.id).first()
-                                        imageList.forEach { image ->
-                                            tempPointsCollection.addPlacemark().apply {
-                                                geometry = Point(image.lat, image.lng)
-                                                val imageData = mutableMapOf<String, Any?>("filename" to image.filename,
-                                                    "num" to image.num, "uuid" to image.uuid)
-                                                setUserData(imageData)
-                                                setIcon(clusterIcon(bgColor = colorInt, textColor = 0xFFFFFFFF.toInt()))
-                                                addTapListener(libraryImagesListener)
-                                            }
-                                        }
-                                        pointsClusterListenerList.add(tempPointsClusterListener)
-                                        pointsCollectionList.add(tempPointsCollection)
-                                    }
+                                    pointsClusterListenerList.add(tempPointsClusterListener)
+                                    pointsCollectionList.add(tempPointsCollection)
                                 }
-
+                                "library_images" -> {
+                                    val imageList = layerDao.getImagesByLayerId(layer.id).first()
+                                    imageList.forEach { image ->
+                                        tempPointsCollection.addPlacemark().apply {
+                                            geometry = Point(image.lat, image.lng)
+                                            val imageData = mutableMapOf<String, Any?>("filename" to image.filename,
+                                                "num" to image.num, "uuid" to image.uuid)
+                                            setUserData(imageData)
+                                            setIcon(clusterIcon(bgColor = colorInt, textColor = 0xFFFFFFFF.toInt()))
+                                            addTapListener(libraryImagesListener)
+                                        }
+                                    }
+                                    pointsClusterListenerList.add(tempPointsClusterListener)
+                                    pointsCollectionList.add(tempPointsCollection)
+                                }
                             }
                         }
+
                         pointsCollectionList.forEach {
                             it.clusterPlacemarks(50.0, 17)
                         }

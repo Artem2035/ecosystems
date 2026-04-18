@@ -1,40 +1,41 @@
 package com.example.ecosystems
 
 import android.annotation.SuppressLint
-import android.content.DialogInterface
 import android.content.Intent
-import android.graphics.Color
 import android.os.Bundle
-import android.util.Log
 import android.view.View
-import android.widget.Button
-import android.widget.EditText
-import androidx.appcompat.app.AlertDialog
+import android.widget.LinearLayout
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
-import com.example.ecosystems.DataClasses.TreeRow
-import com.example.ecosystems.TreesManagement.TreeAdapter
+import com.example.ecosystems.Dialogs.PointDataDialogFragment
 import com.example.ecosystems.db.AppDatabase
 import com.example.ecosystems.db.dao.LayerEntityDao
 import com.example.ecosystems.db.dao.PlanEntityDao
+import com.example.ecosystems.db.dao.TableEntityDao
+import com.example.ecosystems.db.entity.table.TablePropertyEntity
+import com.example.ecosystems.db.relation.LayerPointWithValues
 import com.example.ecosystems.db.repository.LayerRepository
 import com.example.ecosystems.db.repository.PlanRepository
-import com.example.ecosystems.utils.isInternetAvailable
-import kotlinx.coroutines.flow.first
+import com.example.ecosystems.db.repository.TableRepository
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class TreesManagementActivity : AppCompatActivity() {
-    private lateinit var adapter: TreeAdapter
+    private var planId: Int = 0
 
-    //private var planPointsMap: MutableMap<String, MutableMap<String, Any?>> = mutableMapOf()
-    private var treesList: MutableList<TreeRow> = mutableListOf()
+    private lateinit var headerRow: LinearLayout
+    private lateinit var tableBody: LinearLayout
+
     private lateinit var layerDao: LayerEntityDao
     private lateinit var layerRepository: LayerRepository
     private lateinit var planRepository: PlanRepository
     private lateinit var planDao: PlanEntityDao
+    private lateinit var tableRepository: TableRepository
+    private lateinit var tableDao: TableEntityDao
 
     @SuppressLint("MissingInflatedId")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -43,178 +44,170 @@ class TreesManagementActivity : AppCompatActivity() {
 
         layerDao = AppDatabase.getInstance(this).layerDao()
         planDao = AppDatabase.getInstance(this).planDao()
+        tableDao = AppDatabase.getInstance(this).tableDao()
         layerRepository = LayerRepository(layerDao)
         planRepository = PlanRepository(planDao)
+        tableRepository = TableRepository(tableDao)
 
-        val planPointsMap = intent.extras
-            ?.getSerializable("planPointsMap") as? MutableMap<String, MutableMap<String, Any?>>
-        val planId =  intent.extras?.getSerializable("planId").toString().toInt()
+        planId =  intent.extras?.getSerializable("planId").toString().toInt()
 
-        val recycler = findViewById<RecyclerView>(R.id.tableRecycler)
-        recycler.layoutManager = LinearLayoutManager(this)
+        headerRow = findViewById(R.id.headerRow)
+        tableBody = findViewById(R.id.tableBody)
 
-        if(isInternetAvailable()){
-            Log.d("planPointsMap", "$planPointsMap")
-            if(!planPointsMap?.isEmpty()!!){
-                planPointsMap.forEach { uuid, planPoints ->
-                    Log.d("planPoints", "$planPoints")
-                    val data = planPoints.get("data") as? Map<*, *>
-                    Log.d("data123", "$data")
-                    val points = data?.get("points") as? List<Map<*, *>> //as? MutableList<MutableMap<String, Any?>>
-                    Log.d("points", "$points")
-                    points?.forEach { point ->
-                        treesList.add(TreeRow(point.get("id").toString().toDouble().toInt()))
-                    }
-                }
-            }
-        }
-        else{
-            lifecycleScope.launch{
-                val plan = planRepository.getPlanData(planId).first()
-                plan.forEach{
-                    it.layers.forEach {layer->
-                        when(layer.type){
-                            "points" -> {
-                                val pointList = layerDao.getPointsByLayerId(planId).first()
-                                pointList.forEach { point ->
-                                    treesList.add(TreeRow(point.id))
+        setSupportActionBar(findViewById(R.id.toolbar))
+        supportActionBar?.setDisplayHomeAsUpEnabled(true)
+
+        loadTable()
+    }
+
+    private fun loadTable() {
+        lifecycleScope.launch {
+            val plan = withContext(Dispatchers.IO) { planRepository.getPlanData(planId) }
+            plan.layers.forEach {layer->
+                when(layer.type){
+                    "points" -> {
+                        if(layer.tableId == null)
+                            return@forEach
+
+                        // 1. Свойства таблицы — заголовки колонок
+                        val tableWithProperties = withContext(Dispatchers.IO) {
+                            tableRepository.getTableWithProperties(layer.tableId)
+                        }
+                        val properties = tableWithProperties?.properties
+                            ?.sortedBy { it.sortOrder }
+                            ?: emptyList()
+
+                        buildHeader(properties)
+
+                        // 2. Все точки слоя
+                        layerRepository.getPointsWithValuesByLayerId(layer.id)
+                            ?.flowOn(Dispatchers.IO)
+                            ?.collect { points ->
+                                tableBody.removeAllViews()
+                                points.forEach { point ->
+                                    buildRow(point, properties)
                                 }
                             }
-                        }
                     }
                 }
-                adapter = TreeAdapter(treesList)
-                recycler.adapter = adapter
+            }
+
+        }
+    }
+
+    private var columnWidth = 0
+    private fun buildHeader(properties: List<TablePropertyEntity>) {
+        val totalColumns = 3 + properties.size
+
+        val screenWidth = resources.displayMetrics.widthPixels
+        val minColumnWidth = dpToPx(120)
+        val expandedColumnWidth = screenWidth / totalColumns
+
+        // Если колонки влезают — растягиваем, иначе фиксированная минимальная ширина
+        columnWidth = if (expandedColumnWidth >= minColumnWidth) {
+            expandedColumnWidth
+        } else {
+            minColumnWidth
+        }
+
+        headerRow.removeAllViews()
+        // Фиксированные колонки
+        headerRow.addView(makeHeaderCell("№"))
+        headerRow.addView(makeHeaderCell("Широта"))
+        headerRow.addView(makeHeaderCell("Долгота"))
+
+        // Динамические колонки из свойств таблицы
+        properties.forEach { property ->
+            val title = property.displayName
+                ?.takeIf { it.isNotBlank() }
+                ?: property.name
+            headerRow.addView(makeHeaderCell(title))
+        }
+    }
+
+    private fun buildRow(
+        item: LayerPointWithValues,
+        properties: List<TablePropertyEntity>
+    ) {
+        val valuesMap = item.values.associate { it.value.propertyId to it.value.value }
+
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+            setOnClickListener {
+                // открыть диалог или детальное view по точке
+                PointDataDialogFragment(item.point.id, layerRepository, tableRepository)
+                    .show(supportFragmentManager, "point_data")
             }
         }
-        
-        adapter = TreeAdapter(treesList)
-        recycler.adapter = adapter
 
-        val addTreeButton: Button = findViewById(com.example.ecosystems.R.id.addTreeButton)
-        addTreeButton.setOnClickListener {
-            showAddTreeDialog()
+        // Фиксированные ячейки
+        row.addView(makeCell(item.point.id.toString()))
+        row.addView(makeCell("%.6f".format(item.point.lat)))
+        row.addView(makeCell("%.6f".format(item.point.lng)))
+
+        // Динамические ячейки
+        properties.forEach { property ->
+            val value = valuesMap[property.id]
+                ?.takeIf { it.isNotBlank() }
+                ?: "—"
+            val units = property.units.takeIf { it.isNotBlank() }
+            val display = if (units != null && value != "—") "$value $units" else value
+            row.addView(makeCell(display))
         }
+
+        // Разделитель между строками
+        val divider = View(this).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, dpToPx(1)
+            )
+            setBackgroundColor(ContextCompat.getColor(this@TreesManagementActivity, R.color.gray))
+        }
+
+        tableBody.addView(row)
+        tableBody.addView(divider)
+    }
+
+    private fun makeHeaderCell(text: String): TextView {
+        return TextView(this).apply {
+            this.text = text
+            textSize = 13f
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            setTextColor(ContextCompat.getColor(this@TreesManagementActivity, R.color.black))
+            layoutParams = LinearLayout.LayoutParams(columnWidth, LinearLayout.LayoutParams.MATCH_PARENT)
+            setPadding(dpToPx(12), 0, dpToPx(12), 0)
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            maxLines = 2
+            ellipsize = android.text.TextUtils.TruncateAt.END
+        }
+    }
+
+    private fun makeCell(text: String): TextView {
+        return TextView(this).apply {
+            this.text = text
+            textSize = 14f
+            setTextColor(ContextCompat.getColor(this@TreesManagementActivity, R.color.black))
+            layoutParams = LinearLayout.LayoutParams(columnWidth, LinearLayout.LayoutParams.WRAP_CONTENT)
+            setPadding(dpToPx(12), dpToPx(10), dpToPx(12), dpToPx(10))
+            maxLines = 2
+            ellipsize = android.text.TextUtils.TruncateAt.END
+        }
+    }
+
+    private fun dpToPx(dp: Int): Int =
+        (dp * resources.displayMetrics.density).toInt()
+
+    override fun onSupportNavigateUp(): Boolean {
+        finish()
+        return true
     }
 
     fun startForestTaxationActivity(view: View)
     {
         val intent =  Intent(this,ForestTaxationActivity::class.java)
         startActivity(intent)
-    }
-
-    private fun showAddTreeDialog() {
-        val inflater = layoutInflater
-        val dialogView = inflater.inflate(R.layout.dialog_add_tree, null)
-
-        val speciesEt = dialogView.findViewById<EditText>(R.id.speciesEt)
-        val ageEt = dialogView.findViewById<EditText>(R.id.ageEt)
-        val d13Et = dialogView.findViewById<EditText>(R.id.d13Et)
-        val heightEt = dialogView.findViewById<EditText>(R.id.heightEt)
-        val lkEt = dialogView.findViewById<EditText>(R.id.lkEt)
-        val hdkEt = dialogView.findViewById<EditText>(R.id.hdkEt)
-        val crownDiameterNSEt = dialogView.findViewById<EditText>(R.id.crownDiameterNSEt)
-        val crownDiameterEWEt = dialogView.findViewById<EditText>(R.id.crownDiameterEWEt)
-        val averageCrownDiameterEt = dialogView.findViewById<EditText>(R.id.averageCrownDiameterEt)
-
-        val builder = AlertDialog.Builder(this)
-            .setTitle("Добавить дерево")
-            .setView(dialogView)
-            .setNegativeButton("Отмена", null) // просто закроет диалог
-
-        // создаём, показываем, затем заменяем стандартный слушатель Positive, чтобы не закрывать диалог при ошибке валидации
-        val dialog = builder.create()
-        dialog.setButton(DialogInterface.BUTTON_POSITIVE, "Добавить") { _, _ -> /* placeholder */ }
-        dialog.show()
-
-        val negative = dialog.getButton(DialogInterface.BUTTON_NEGATIVE)
-        negative.setTextColor(Color.BLACK)
-        // Получаем кнопку и переопределяем поведение
-        val positive = dialog.getButton(DialogInterface.BUTTON_POSITIVE)
-        positive.setTextColor(Color.WHITE)
-        positive.background = ContextCompat.getDrawable(this, R.drawable.rounded_corners_button)
-        positive.backgroundTintList = null
-        positive.minHeight = 0
-        positive.minimumHeight = 0
-        positive.minWidth = 0
-        positive.minimumWidth = 0
-        positive.setPadding(30, 15, 30, 15)
-
-        positive.setOnClickListener {
-            val species = speciesEt.text.toString().trim()
-            val ageStr = ageEt.text.toString().trim()
-            val d13Str = d13Et.text.toString().trim()
-            val heightStr = heightEt.text.toString().trim()
-
-            val lkStr = lkEt.text.toString().trim()
-            val hdkStr = hdkEt.text.toString().trim()
-            val crownDiameterNSStr = crownDiameterNSEt.text.toString().trim()
-            val crownDiameterEWStr = crownDiameterEWEt.text.toString().trim()
-            val averageCrownDiameterStr = averageCrownDiameterEt.text.toString().trim()
-
-            // Валидация
-            if (species.isEmpty()) {
-                speciesEt.error = "Введите породу"
-                speciesEt.requestFocus()
-                return@setOnClickListener
-            }
-            val age = ageStr.toIntOrNull()
-            if (age == null || age < 0) {
-                ageEt.error = "Неверный возраст"
-                ageEt.requestFocus()
-                return@setOnClickListener
-            }
-            val d13 = d13Str.toDoubleOrNull()
-            if (d13 == null || d13 < 0.0) {
-                d13Et.error = "Неверный диаметр ствола на высоте 1,3 м от земли"
-                d13Et.requestFocus()
-                return@setOnClickListener
-            }
-            val height = heightStr.toDoubleOrNull()
-            if (height == null || height < 0.0) {
-                heightEt.error = "Неверная высота"
-                heightEt.requestFocus()
-                return@setOnClickListener
-            }
-            val lk = lkStr.toDoubleOrNull()
-            if (lk == null || lk < 0.0) {
-                lkEt.error = "длина кроны дерева"
-                lkEt.requestFocus()
-                return@setOnClickListener
-            }
-            val hdk = hdkStr.toDoubleOrNull()
-            if (hdk == null || hdk < 0.0) {
-                hdkEt.error = "Неверная высота до начала кроны"
-                hdkEt.requestFocus()
-                return@setOnClickListener
-            }
-
-            val crownDiameterNS = crownDiameterNSStr.toDoubleOrNull()
-            if (crownDiameterNS == null || crownDiameterNS < 0.0) {
-                crownDiameterNSEt.error = "Неверный диаметр кроны дерева по оси север–юг"
-                crownDiameterNSEt.requestFocus()
-                return@setOnClickListener
-            }
-
-            val crownDiameterEW = crownDiameterEWStr.toDoubleOrNull()
-            if (crownDiameterEW == null || crownDiameterEW < 0.0) {
-                crownDiameterEWEt.error = "Неверный диаметр кроны по оси запад–восток"
-                crownDiameterEWEt.requestFocus()
-                return@setOnClickListener
-            }
-
-            val averageCrownDiameter = averageCrownDiameterStr.toDoubleOrNull()
-            if (averageCrownDiameter == null || averageCrownDiameter < 0.0) {
-                averageCrownDiameterEt.error = "Неверное среднее значение диаметров кроны"
-                averageCrownDiameterEt.requestFocus()
-                return@setOnClickListener
-            }
-
-            val num = adapter.itemCount
-            adapter.addRow(TreeRow( num + 1, species = species, age = age, d13 = d13, height = height,
-                lk=lk, hdk, crownDiameterNS, crownDiameterEW,averageCrownDiameter))
-
-            dialog.dismiss()
-        }
     }
 }

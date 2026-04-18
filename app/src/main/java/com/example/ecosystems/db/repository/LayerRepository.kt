@@ -31,6 +31,12 @@ class LayerRepository(private val layerDao: LayerEntityDao) {
     ) {
         layerDao.insertAllData(layers, points, images, pointsValues)
     }
+    //удалить незаполненное значение точки
+    suspend fun deletePointValue(pointId: Int, propertyId: Int) =
+        layerDao.deletePointValue(pointId, propertyId)
+    //сохранить все значения точки
+    suspend fun savePointValues(values: List<PointValueEntity>) =
+        layerDao.savePointValues(values)
 
     fun getAllLayersWithData() = layerDao.getAllLayersWithData()
 
@@ -50,6 +56,19 @@ class LayerRepository(private val layerDao: LayerEntityDao) {
 
     fun getAllPointsRaw() = layerDao.getAllPointsRaw()
 
+    //получить значения для точки с данным id
     fun getPointWithValuesByPointId(pointId: Int) =
         layerDao.getPointWithValuesByPointId(pointId)
+
+    //получить все точки со значениями для слоя с таким id
+    fun getPointsWithValuesByLayerId(layerId: Int) =
+        layerDao.getPointsWithValuesByLayerId(layerId)
+
+    //получить id таблицы по id слоя
+    fun getTableIdByLayerId(layerId: Int) =
+        layerDao.getTableIdByLayerId(layerId)
+
+    //получить id слоя по известному id точки
+    fun getLayerIdByPointId(pointId: Int) =
+        layerDao.getLayerIdByPointId(pointId)
 }

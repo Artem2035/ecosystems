@@ -7,9 +7,9 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
-import com.example.ecosystems.db.entity.layer.LayerEntity
 import com.example.ecosystems.db.entity.PlanEntity
 import com.example.ecosystems.db.entity.PlanFileEntity
+import com.example.ecosystems.db.entity.layer.LayerEntity
 import com.example.ecosystems.db.relation.PlanWithData
 import kotlinx.coroutines.flow.Flow
 
@@ -38,7 +38,7 @@ interface PlanEntityDao {
 
     @Transaction
     @Query("SELECT * FROM plans WHERE id = :planId")
-    fun getPlanWithData(planId: Int): Flow<List<PlanWithData>>
+    fun getPlanWithData(planId: Int): PlanWithData
 
     @Transaction
     @Query("SELECT * FROM plan_files WHERE gisObjectId = :planId")

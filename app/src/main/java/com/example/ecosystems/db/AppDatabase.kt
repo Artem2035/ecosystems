@@ -28,7 +28,6 @@ import com.example.ecosystems.db.entity.table.TablePropertyEntity
 abstract class AppDatabase : RoomDatabase() {
     abstract fun layerDao(): LayerEntityDao
     abstract fun planDao(): PlanEntityDao
-
     abstract fun tableDao(): TableEntityDao
     companion object {
         @Volatile private var INSTANCE: AppDatabase? = null

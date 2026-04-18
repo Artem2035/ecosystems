@@ -51,6 +51,13 @@ interface LayerEntityDao {
 
     @Delete
     suspend fun delete(layer: LayerEntity)
+    //удалить незаполненное значение точки
+    @Query("DELETE FROM point_values WHERE pointId = :pointId AND propertyId = :propertyId")
+    suspend fun deletePointValue(pointId: Int, propertyId: Int)
+
+    //сохранить значения точки
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun savePointValues(values: List<PointValueEntity>)
 
     /*select*/
     @Query("SELECT * FROM layers ORDER BY id ASC")
@@ -58,6 +65,10 @@ interface LayerEntityDao {
 
     @Query("SELECT * FROM layers WHERE id = :id")
     suspend fun getById(id: Int): LayerEntity?           // разовый, может вернуть null
+
+    //получить id таблицы по id слоя
+    @Query("SELECT tableId FROM layers WHERE id = :layerId")
+    fun getTableIdByLayerId(layerId: Int): Int?
 
 
     // Layer + images + points
@@ -84,12 +95,14 @@ interface LayerEntityDao {
     @Query("SELECT * FROM layer_points WHERE layerId = :layerId ORDER BY num ASC")
     fun getPointsByLayerId(layerId: Int): Flow<List<LayerPointEntity>>
 
+    //получить id слоя по uuid
     @Query("SELECT * FROM layers WHERE uuid = :uuid ORDER BY id ASC")
     fun getLayerIdByUUID(uuid: String): LayerEntity?
 
     @Query("SELECT * FROM layer_points ORDER BY num ASC")
     fun getAllLayerPoints(): Flow<List<LayerPointEntity>>
 
+    //получить все точки с данными для слоя с таким id
     @Transaction
     @Query("SELECT * FROM layer_points WHERE layerId = :layerId")
     fun getPointsWithValues(layerId: Int): Flow<List<LayerPointWithValues>>?
@@ -101,8 +114,17 @@ interface LayerEntityDao {
     @Query("SELECT * FROM point_values")
     fun getAllPointsRaw(): Flow<List<PointValueEntity>>?
 
+    //получить значения для точки с данным id
     @Transaction
     @Query("SELECT * FROM layer_points WHERE id = :pointId")
     fun getPointWithValuesByPointId(pointId: Int): Flow<List<LayerPointWithValues>>?
 
+    //получить все точки со значениями для слоя с таким id
+    @Transaction
+    @Query("SELECT * FROM layer_points WHERE layerId = :layerId")
+    fun getPointsWithValuesByLayerId(layerId: Int): Flow<List<LayerPointWithValues>>?
+
+    //получить id слоя по известному id точки
+    @Query("SELECT layerId FROM layer_points WHERE id = :pointId")
+    fun getLayerIdByPointId(pointId: Int): Int
 }
