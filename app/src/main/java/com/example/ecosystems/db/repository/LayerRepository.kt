@@ -11,6 +11,10 @@ class LayerRepository(private val layerDao: LayerEntityDao) {
 
     fun getAllLayers() = layerDao.getAll()
 
+    suspend fun updatePointCoordinates(pointId: Int, lat: Double, lng: Double) =
+        layerDao.updatePointCoordinates(pointId, lat, lng)
+
+    //обновление координат точки
     suspend fun insertLayers(layers: List<LayerEntity>) {
         layerDao.insertLayers(layers)
     }
@@ -18,10 +22,16 @@ class LayerRepository(private val layerDao: LayerEntityDao) {
     suspend fun insertAllPoints(points: List<LayerPointEntity>) {
         layerDao.insertPoints(points)
     }
+    // одиночная вставка точки LayerPointEntity
+    suspend fun insertPoint(point: LayerPointEntity): Long =
+        layerDao.insertPoint(point)
 
     suspend fun insertAllImages(images: List<LayerImageEntity>) {
         layerDao.insertImages(images)
     }
+    //удалить точку с pointId
+    suspend fun deletePoint(pointId: Int) =
+        layerDao.deletePoint(pointId)
 
     suspend fun insertAllData(
         layers: List<LayerEntity>,
@@ -49,8 +59,12 @@ class LayerRepository(private val layerDao: LayerEntityDao) {
     fun getAllPointsWithValues() =
         layerDao.getAllPointsWithValues()
 
-    fun getPointsByLayerId(layerId: Int) =
+    //получить все точки LayerPointEntity для слоя с layerId
+    suspend fun getPointsByLayerId(layerId: Int) =
         layerDao.getPointsByLayerId(layerId)
+
+    suspend fun getImagesByLayerId(layerId: Int) =
+        layerDao.getImagesByLayerId(layerId)
 
     fun getAllLayerPoints() = layerDao.getAllLayerPoints()
 
@@ -71,4 +85,8 @@ class LayerRepository(private val layerDao: LayerEntityDao) {
     //получить id слоя по известному id точки
     fun getLayerIdByPointId(pointId: Int) =
         layerDao.getLayerIdByPointId(pointId)
+
+    // получить слои типа 'points' для плана нужным planId
+    suspend fun getPointLayersByPlanId(planId: Int): List<LayerEntity> =
+        layerDao.getPointLayersByPlanId(planId)
 }

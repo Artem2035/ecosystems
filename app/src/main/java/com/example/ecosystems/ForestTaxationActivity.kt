@@ -22,6 +22,7 @@ import androidx.appcompat.widget.AppCompatButton
 import androidx.lifecycle.lifecycleScope
 import com.example.ecosystems.DataClasses.Plan
 import com.example.ecosystems.Dialogs.PointDataDialogFragment
+import com.example.ecosystems.Dialogs.SelectLayerDialogFragment
 import com.example.ecosystems.PhotoViewDialog.ImageAnnotationDialog
 import com.example.ecosystems.Plan.PlanInfoActivity
 import com.example.ecosystems.Plan.PlanSearchDialogFragment
@@ -30,12 +31,14 @@ import com.example.ecosystems.db.AppDatabase
 import com.example.ecosystems.db.dao.LayerEntityDao
 import com.example.ecosystems.db.dao.PlanEntityDao
 import com.example.ecosystems.db.dao.TableEntityDao
+import com.example.ecosystems.db.entity.layer.LayerEntity
+import com.example.ecosystems.db.entity.layer.LayerPointEntity
 import com.example.ecosystems.db.repository.LayerRepository
 import com.example.ecosystems.db.repository.PlanRepository
 import com.example.ecosystems.db.repository.TableRepository
 import com.example.ecosystems.network.ApiService
+import com.example.ecosystems.network.BASE_URL
 import com.example.ecosystems.utils.OsmTileProvider
-import com.example.ecosystems.utils.getBitmapFromVectorDrawable
 import com.example.ecosystems.utils.isInternetAvailable
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -54,16 +57,19 @@ import com.yandex.mapkit.map.ClusterTapListener
 import com.yandex.mapkit.map.ClusterizedPlacemarkCollection
 import com.yandex.mapkit.map.CreateTileDataSource
 import com.yandex.mapkit.map.InputListener
+import com.yandex.mapkit.map.MapObject
 import com.yandex.mapkit.map.MapObjectCollection
+import com.yandex.mapkit.map.MapObjectDragListener
 import com.yandex.mapkit.map.MapObjectTapListener
+import com.yandex.mapkit.map.PlacemarkMapObject
 import com.yandex.mapkit.map.TextStyle
 import com.yandex.mapkit.mapview.MapView
 import com.yandex.runtime.image.ImageProvider
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private lateinit var mapView: MapView
-private val BASE_URL: String = "https://smartecosystems.petrsu.ru/"
 
 class ForestTaxationActivity : AppCompatActivity() {
     private val api: ApiService = ApiService()
@@ -78,6 +84,8 @@ class ForestTaxationActivity : AppCompatActivity() {
     private var libraryImagesClusterListenerList: MutableList<ClusterListener> = mutableListOf()
     /*список кластеризуемых коллекции слоя типа points*/
     private var pointsCollectionList: MutableList<ClusterizedPlacemarkCollection> = mutableListOf()
+
+    private var pointsCollectionMap: MutableMap<Int, ClusterizedPlacemarkCollection> = mutableMapOf()
     /*список ClusterListener для кластеризуемых коллекции точек для списка слоев типа points*/
     private var pointsClusterListenerList: MutableList<ClusterListener> = mutableListOf()
 
@@ -109,8 +117,10 @@ class ForestTaxationActivity : AppCompatActivity() {
     private lateinit var planRepository: PlanRepository
     private lateinit var tableRepository: TableRepository
 
-    val formatter = java.text.SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z",
-        java.util.Locale.ENGLISH)
+    //перетескивание точки
+    private var isDragging = false
+    private var draggingPointId: Int? = null
+    private var draggingPlacemark: PlacemarkMapObject? = null
 
     @SuppressLint("MissingInflatedId")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -139,7 +149,9 @@ class ForestTaxationActivity : AppCompatActivity() {
         }
         tempObjects = mapObjects.addCollection() // временные объекты (точки и линии при выборе)
         // Слушатель нажатий на карту
-        mapView.mapWindow.map.addInputListener(object : InputListener {
+        mapView.mapWindow.map.addInputListener(mapInputListener)
+
+        /*mapView.mapWindow.map.addInputListener(object : InputListener {
             override fun onMapTap(map: com.yandex.mapkit.map.Map, point: Point) {
                 if (isSelecting) {
                     onMapTapped(point)
@@ -147,9 +159,12 @@ class ForestTaxationActivity : AppCompatActivity() {
             }
 
             override fun onMapLongTap(map: com.yandex.mapkit.map.Map, point: Point) {
-
+                Log.d("tag122", "${pointsCollectionMap}")
+                runOnUiThread {
+                    onLongTapOnMap(point.latitude, point.longitude)
+                }
             }
-        })
+        })*/
 
         selectButton = findViewById(R.id.addPolygonButton)
         // Кнопка для активации режима выбора
@@ -226,17 +241,79 @@ class ForestTaxationActivity : AppCompatActivity() {
                 }
             }
             thread.start()
-        }else{
+        }
+        else{
             lifecycleScope.launch {
-                val plans = planDao.getAllPlans().first()
+                val plans = planRepository.getAllPlans()
                 Log.d("TAG11", "Количество: ${plans.size}")
                 plans.forEach { plan ->
                     planList.add(Plan(plan.id, plan.uuid,plan.name, plan.description.toString()))
                 }
             }
         }
+    }
 
+    private val mapInputListener = object : InputListener {
+        override fun onMapTap(map: com.yandex.mapkit.map.Map, point: Point) {
+            if (isSelecting) {
+                runOnUiThread { onMapTapped(point) }
+            }
+        }
 
+        override fun onMapLongTap(map: com.yandex.mapkit.map.Map, point: Point) {
+            runOnUiThread {
+                if (!isDragging) {
+                    onLongTapOnMap(point.latitude, point.longitude)
+                }
+            }
+        }
+    }
+
+    private val pointDragListener = object : MapObjectDragListener {
+
+        override fun onMapObjectDragStart(mapObject: MapObject) {
+            val pointId = mapObject.userData as? Int ?: return
+            isDragging = true
+            draggingPointId = pointId
+            draggingPlacemark = mapObject as? PlacemarkMapObject
+            Log.d("drag", "Start dragging pointId=$pointId")
+        }
+
+        override fun onMapObjectDrag(mapObject: MapObject, point: Point) {
+            // можно обновлять координаты в реальном времени если нужно
+        }
+
+        override fun onMapObjectDragEnd(mapObject: MapObject) {
+            val pointId = draggingPointId ?: return
+            val placemark = draggingPlacemark ?: return
+            val newPoint = placemark.geometry
+
+            Log.d("drag", "End drag pointId=$pointId lat=${newPoint.latitude} lng=${newPoint.longitude}")
+
+            // Сохраняем новые координаты в БД
+            lifecycleScope.launch {
+                withContext(Dispatchers.IO) {
+                    layerRepository.updatePointCoordinates(
+                        pointId = pointId,
+                        lat = newPoint.latitude,
+                        lng = newPoint.longitude
+                    )
+                }
+                Toast.makeText(
+                    this@ForestTaxationActivity,
+                    "Координаты сохранены",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+
+            pointsCollectionList.forEach {
+                it.clusterPlacemarks(50.0, 17)
+            }
+
+            isDragging = false
+            draggingPointId = null
+            draggingPlacemark = null
+        }
     }
 
     private fun onMapTapped(point: Point) {
@@ -262,6 +339,127 @@ class ForestTaxationActivity : AppCompatActivity() {
         Log.d("Map Tap", "Map tap")
     }
 
+    //при длительном нажатии создаем точку, если выбран гис объект (план)
+    private fun onLongTapOnMap(lat: Double, lng: Double) {
+        if(selectedPlan == null){
+            Toast.makeText(this, "Гис объект (план) не выбран!", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        Log.d("tag122", "${pointsCollectionMap}")
+
+        lifecycleScope.launch {
+            val pointLayers = withContext(Dispatchers.IO) {
+                layerRepository.getPointLayersByPlanId(selectedPlan!!.plainId)
+            }
+            Log.d("tag122", "${pointLayers}")
+            if (pointLayers.isEmpty()) {
+                Toast.makeText(this@ForestTaxationActivity, "Нет доступных слоёв", Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+
+            SelectLayerDialogFragment(pointLayers) { selectedLayer, num ->
+                lifecycleScope.launch {
+                    createPointAndOpenDialog(selectedLayer, num, lat, lng)
+                }
+            }.show(supportFragmentManager, "select_layer")
+        }
+    }
+
+    //создание новой точки (маркера) и открытие диалага с параметрами
+    private suspend fun createPointAndOpenDialog(
+        layer: LayerEntity,
+        num: Int,
+        lat: Double,
+        lng: Double
+    ) {
+        val now = System.currentTimeMillis()
+        val newPoint = LayerPointEntity(
+            layerId = layer.id,
+            lat = lat,
+            lng = lng,
+            num = num,
+            valuesJson = "{}",
+            createdAt = now,
+            updatedAt = now
+        )
+
+        val newPointId = withContext(Dispatchers.IO) {
+            layerRepository.insertPoint(newPoint)
+        }.toInt()
+
+        // Цвет слоя (если есть поле color в LayerEntity, иначе дефолт)
+        val colorInt = runCatching {
+            Color.parseColor(layer.color)
+        }.getOrDefault(Color.parseColor("#FFA500"))
+
+        var newMarker: PlacemarkMapObject
+        // Добавляем маркер в нужную коллекцию
+        runOnUiThread {
+            addMarkerToCollection(
+                layerId = layer.id,
+                pointId = newPointId,
+                num = num,
+                lat = lat,
+                lng = lng,
+                colorInt = colorInt
+            )
+        }
+
+        withContext(Dispatchers.Main) {
+            PointDataDialogFragment(
+                pointId = newPointId,
+                layerRepository = layerRepository,
+                tableRepository = tableRepository
+            ).show(supportFragmentManager, "point_data_$newPointId")
+        }
+    }
+    //добавить маркер в коллекцию
+    private fun addMarkerToCollection(
+        layerId: Int,
+        pointId: Int,
+        num: Int,
+        lat: Double,
+        lng: Double,
+        colorInt: Int
+    ) {
+        val collection = pointsCollectionMap[layerId]
+
+        if (collection == null) {
+            // Коллекции для слоя ещё нет — создаём новую
+            val mapObjects = mapView.mapWindow.map.mapObjects
+            val listener = createLibraryImagesClusterListener(colorInt)
+            val newCollection = mapObjects.addClusterizedPlacemarkCollection(listener)
+
+            newCollection.addPlacemark().apply {
+                geometry = Point(lat, lng)
+                setUserData(pointId)
+                setText(num.toString())
+                setIcon(clusterIcon(bgColor = colorInt, textColor = 0xFFFFFFFF.toInt()))
+                addTapListener(globalListener)
+                isDraggable = true                        // разрешить перетаскивание
+                setDragListener(pointDragListener)        // добавить listener
+            }
+            newCollection.clusterPlacemarks(50.0, 17)
+
+            pointsClusterListenerList.add(listener)
+            pointsCollectionMap[layerId] = newCollection
+        }
+        else {
+            // Коллекция уже есть — просто добавляем маркер и перекластеризуем
+            collection.addPlacemark().apply {
+                geometry = Point(lat, lng)
+                setUserData(pointId)
+                setText(num.toString())
+                setIcon(clusterIcon(bgColor = colorInt, textColor = 0xFFFFFFFF.toInt()))
+                addTapListener(globalListener)
+                isDraggable = true                        // разрешить перетаскивание
+                setDragListener(pointDragListener)        // добавить listener
+            }
+            collection.clusterPlacemarks(50.0, 17)
+        }
+    }
+
     override fun onStart() {
         super.onStart()
         MapKitFactory.getInstance().onStart()
@@ -284,7 +482,6 @@ class ForestTaxationActivity : AppCompatActivity() {
     {
         val intent =  Intent(this,TreesManagementActivity::class.java)
         val bundle = Bundle()
-        //bundle.putSerializable("planPointsMap", planPointsMap as java.io.Serializable)
         bundle.putSerializable("planId", selectedPlan?.plainId)
         intent.putExtras(bundle)
         startActivity(intent)
@@ -411,6 +608,7 @@ class ForestTaxationActivity : AppCompatActivity() {
                         listOfPlanLayers = result.get("layers") as MutableList<Map<String, Any?>>
                         planPointsMap.clear()
                         pointsCollectionList.clear()
+                        pointsCollectionMap.clear()
                         pointsClusterListenerList.clear()
                         planLibraryImagesMap.clear()
                         libraryImagesCollectionList.clear()
@@ -445,109 +643,26 @@ class ForestTaxationActivity : AppCompatActivity() {
                             startActivity(intent)
                         }
                     }
-                    /*                val entities = listOfPlanLayers.map { layer ->
-                                        val createdAt = formatter.parse(layer["created_at"] as String)?.time ?: 0L
-                                        val updatedAt = formatter.parse(layer["updated_at"] as String)?.time ?: 0L
-                                        LayerEntity(
-                                            id = layer["id"].toString().toDouble().toInt(),
-                                            uuid = layer["uuid"] as String,
-                                            gisObjectId = layer["gis_object_id"].toString().toDouble().toInt(),
-                                            gisObjectFileId = layer["gis_object_file_id"].toString().toDoubleOrNull()
-                                                ?.toInt(),
-                                            name = layer["name"] as String,
-                                            color = layer["color"] as String?,
-                                            type = layer["type"] as String,
-                                            order = layer["order"].toString().toIntOrNull(),
-                                            parentId = layer["parent_id"].toString().toIntOrNull(),
-                                            tableId = layer["table_id"].toString().toIntOrNull(),
-                                            createdAt = createdAt,
-                                            updatedAt = updatedAt,
-                                            dataJson = Gson().toJson(layer["data"]),
-                                            cropEnabled = layer["crop_enabled"] as Boolean,
-                                            cropPercent = (layer["crop_percent"] as Number).toDouble(),
-                                            syncedAt = System.currentTimeMillis()
-                                        )
-                                    }
-                                    lifecycleScope.launch(Dispatchers.IO) {
-                                        layerRepository.insertAll(entities)
-                                    }
-
-                                    entities.forEach {
-                                        val gson = Gson()
-                                        val mapAdapter = gson.getAdapter(object: TypeToken<Map<String, Any?>>() {})
-                                        val data: Map<String, Any?> = mapAdapter.fromJson(it.dataJson)
-
-                                        if(it.type =="points"){
-                                            val points = data.get("points") as List<Map<String, Any?>>
-                                            Log.d("JSON_DEBUG", "${points}")
-                                            val pointsEntities = points.map { point ->
-                                                val createdAt = formatter.parse(point["created_at"] as String)?.time ?: 0L
-                                                val updatedAt = formatter.parse(point["updated_at"] as String)?.time ?: 0L
-                                                LayerPointEntity(
-                                                    id = (point["id"] as Number).toInt(),
-                                                    layerId = (point["layer_id"] as Number).toInt(),
-                                                    lat = (point["lat"] as Number).toDouble(),
-                                                    lng = (point["lng"] as Number).toDouble(),
-                                                    num = (point["num"] as Number).toInt(),
-                                                    valuesJson = Gson().toJson(point["values"]), // сериализация Map → JSON строка
-                                                    createdAt = createdAt,
-                                                    updatedAt = updatedAt
-                                                )
-                                            }
-                                            lifecycleScope.launch(Dispatchers.IO) {
-                                                layerRepository.insertAllPoints(pointsEntities)
-                                            }
-                                        }
-                                        if(it.type == "library_images"){
-                                            val images = data.get("images") as List<Map<String, Any?>>
-                                            val imagesEntities = images.mapNotNull { image ->
-                                                val createdAt = formatter.parse(image["created_at"] as String)?.time ?: 0L
-                                                val updatedAt = formatter.parse(image["updated_at"] as String)?.time ?: 0L
-                                                LayerImageEntity(
-                                                    id = (image["id"] as? Number)?.toInt() ?: return@mapNotNull null,
-                                                    uuid = image["uuid"] as? String ?: return@mapNotNull null,
-                                                    filename = image["filename"] as? String ?: "",
-                                                    originalFilename = image["original_filename"] as? String ?: "",
-                                                    gisObjectLayerId = (image["gis_object_layer_id"] as? Number)?.toInt() ?: 0,
-                                                    lat = (image["lat"] as? Number)?.toDouble() ?: 0.0,
-                                                    lng = (image["lng"] as? Number)?.toDouble() ?: 0.0,
-                                                    num = (image["num"] as? Number)?.toInt() ?: 0,
-                                                    description = image["description"] as? String,
-                                                    createdAt = createdAt,
-                                                    updatedAt = updatedAt,
-                                                    localPath = null,
-                                                    lastAccessedAt = null
-                                                )
-                                            }
-
-                                            lifecycleScope.launch(Dispatchers.IO) {
-                                                layerRepository.insertAllImages(imagesEntities)
-                                            }
-                                        }
-                                    }*/
                 }
                 thread.start()
             }
             else{
-                Log.d("TAG12", "cord: ${lat} ${lng}")
                 lifecycleScope.launch {
                     selectedPlan = plan
-                    Log.d("TAG12", "cord: ${selectedPlan}")
 
-                    val list = planRepository.getPlanFiles(plan.plainId).first()
+                    val list =  planRepository.getPlanFiles(plan.plainId)
                     list.forEach { file ->
                         if(file.centerLat != null && file.centerLng != null){
                             lat = file.centerLat
                             lng = file.centerLng
                         }
-                        //Log.d("TAG", "Layer: id=${layer.id}, name=${layer.name} ${layer}")
                     }
-                    Log.d("TAG12", "cord2: ${lat} ${lng}")
                     val newCameraPosition = CameraPosition(Point(lat, lng),
                         cameraPosition.zoom, cameraPosition.azimuth, cameraPosition.tilt)
                     mapView.mapWindow.map.move(newCameraPosition)
                     planPointsMap.clear()
                     pointsCollectionList.clear()
+                    pointsCollectionMap.clear()
                     pointsClusterListenerList.clear()
                     planLibraryImagesMap.clear()
                     libraryImagesCollectionList.clear()
@@ -567,8 +682,6 @@ class ForestTaxationActivity : AppCompatActivity() {
         if(id != null){
             val dialog = PointDataDialogFragment(id.toString().toDouble().toInt(), layerRepository, tableRepository)
             dialog.show(supportFragmentManager, "point_data_dialog")
-            /*val message = Toast.makeText(this,"Это дерево ${id}",Toast.LENGTH_SHORT)
-            message.show()*/
         }
         true
     }
@@ -625,12 +738,9 @@ class ForestTaxationActivity : AppCompatActivity() {
         cluster.addClusterTapListener(clusterTapListener)
     }
 
-    private lateinit var imageProvider: ImageProvider
     fun DrawObjectsOnMap()
     {
         runOnUiThread{
-            val bitmap = getBitmapFromVectorDrawable(this, R.drawable.map_marker)
-            imageProvider = ImageProvider.fromBitmap(bitmap)
             val mapObjects = mapView.mapWindow.map.mapObjects
             if(isInternetAvailable()){
                 if(!planPointsMap.isEmpty()){
@@ -641,6 +751,7 @@ class ForestTaxationActivity : AppCompatActivity() {
                         val tempLibraryImagesClusterListener = createLibraryImagesClusterListener(colorInt)
                         val tempLibraryImagesCollection = mapObjects.addClusterizedPlacemarkCollection(tempLibraryImagesClusterListener)
 
+                        val layerId = (planPointsMap.get("id") as Number).toInt()
                         val data  = planPointsMap.get("data") as Map<String, Any?>
                         val points = data.get("points") as List<Map<String, Any?>>
                         points.forEach {point ->
@@ -650,10 +761,13 @@ class ForestTaxationActivity : AppCompatActivity() {
                                 setText((point.get("num") as Number).toInt().toString())
                                 setIcon(clusterIcon(bgColor = colorInt, textColor = 0xFFFFFFFF.toInt()))
                                 addTapListener(globalListener)
+                                isDraggable = true                        // разрешить перетаскивание
+                                setDragListener(pointDragListener)        // добавить listener
                             }
                         }
                         pointsClusterListenerList.add(tempLibraryImagesClusterListener)
                         pointsCollectionList.add(tempLibraryImagesCollection)
+                        pointsCollectionMap[layerId] = tempLibraryImagesCollection
                     }
                     pointsCollectionList.forEach {
                         it.clusterPlacemarks(50.0, 17)
@@ -693,11 +807,11 @@ class ForestTaxationActivity : AppCompatActivity() {
                         it.clusterPlacemarks(50.0, 17)
                     }
                 }
-            }else{
+            }
+            else{
                 Log.d("TAG12", "plan1: ${selectedPlan}")
-                lifecycleScope.launch {
+                lifecycleScope.launch{
                     if (selectedPlan != null){
-                        //val layer = layerDao.getLayerIdByUUID(selectedPlan!!.planUUID)
 
                         val plan = planRepository.getPlanData(selectedPlan!!.plainId)
                         plan.layers.forEach {layer->
@@ -709,7 +823,7 @@ class ForestTaxationActivity : AppCompatActivity() {
 
                             when(layer.type){
                                 "points" -> {
-                                    val pointList = layerDao.getPointsByLayerId(layer.id).first()
+                                    val pointList = layerRepository.getPointsByLayerId(layer.id)
                                     pointList.forEach { point ->
                                         tempPointsCollection.addPlacemark().apply {
                                             geometry = Point(point.lat, point.lng)
@@ -717,13 +831,16 @@ class ForestTaxationActivity : AppCompatActivity() {
                                             setText(point.num.toString())
                                             setIcon(clusterIcon(bgColor = colorInt, textColor = 0xFFFFFFFF.toInt()))
                                             addTapListener(globalListener)
+                                            isDraggable = true                        // разрешить перетаскивание
+                                            setDragListener(pointDragListener)        // добавить listener
                                         }
                                     }
                                     pointsClusterListenerList.add(tempPointsClusterListener)
                                     pointsCollectionList.add(tempPointsCollection)
+                                    pointsCollectionMap[layer.id] = tempPointsCollection
                                 }
                                 "library_images" -> {
-                                    val imageList = layerDao.getImagesByLayerId(layer.id).first()
+                                    val imageList = layerRepository.getImagesByLayerId(layer.id)
                                     imageList.forEach { image ->
                                         tempPointsCollection.addPlacemark().apply {
                                             geometry = Point(image.lat, image.lng)
@@ -734,13 +851,17 @@ class ForestTaxationActivity : AppCompatActivity() {
                                             addTapListener(libraryImagesListener)
                                         }
                                     }
-                                    pointsClusterListenerList.add(tempPointsClusterListener)
-                                    pointsCollectionList.add(tempPointsCollection)
+                                    libraryImagesClusterListenerList.add(tempPointsClusterListener)
+                                    libraryImagesCollectionList.add(tempPointsCollection)
                                 }
                             }
                         }
 
                         pointsCollectionList.forEach {
+                            it.clusterPlacemarks(50.0, 17)
+                        }
+
+                        libraryImagesCollectionList.forEach {
                             it.clusterPlacemarks(50.0, 17)
                         }
                     }
@@ -758,7 +879,7 @@ fun deepCopy(value: Any?): Any? {
     }
 }
 
-fun clusterIcon(bgColor: Int, textColor: Int): ImageProvider {
+fun clusterIcon2(bgColor: Int, textColor: Int): ImageProvider {
     val bmp = Bitmap.createBitmap(60, 60, Bitmap.Config.ARGB_8888)
     val c = Canvas(bmp)
     val p = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -768,6 +889,27 @@ fun clusterIcon(bgColor: Int, textColor: Int): ImageProvider {
 
     p.color = textColor
     p.textSize = 26f
+    p.textAlign = Paint.Align.CENTER
+    p.typeface = Typeface.DEFAULT_BOLD
+
+    return ImageProvider.fromBitmap(bmp)
+}
+
+fun clusterIcon(bgColor: Int, textColor: Int): ImageProvider {
+    val size = 80        // размер битмапа в пикселях
+    val radius = 30f      // радиус круга — кликабельная зона
+    val center = size / 2f
+
+    val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+    val c = Canvas(bmp)
+    val p = Paint(Paint.ANTI_ALIAS_FLAG)
+
+    // Основной круг
+    p.color = bgColor
+    c.drawCircle(center, center, radius, p)
+
+    p.color = textColor
+    p.textSize = 30f
     p.textAlign = Paint.Align.CENTER
     p.typeface = Typeface.DEFAULT_BOLD
 

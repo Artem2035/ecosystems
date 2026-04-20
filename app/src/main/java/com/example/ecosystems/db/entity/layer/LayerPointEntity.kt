@@ -14,7 +14,8 @@ import androidx.room.PrimaryKey
         onUpdate = ForeignKey.CASCADE  // обновить id  везде
     )],)
 data class LayerPointEntity(
-    @PrimaryKey val id: Int,
+    @PrimaryKey(autoGenerate = true)
+    val id: Int = 0,
     val layerId: Int,
     val lat: Double,
     val lng: Double,

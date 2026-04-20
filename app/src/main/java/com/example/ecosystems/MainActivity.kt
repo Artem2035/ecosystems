@@ -76,7 +76,7 @@ class MainActivity : AppCompatActivity() {
                     //Do some Network Request
                 }.start()
             }else{
-                val message = Toast.makeText(this,"Нет интернета! Включен оффлайн режим ${token}",
+                val message = Toast.makeText(this,"Нет интернета! Включен оффлайн режим!",
                     Toast.LENGTH_SHORT)
                 message.show()
                 val intent =  Intent(this,MapActivity::class.java)

@@ -145,7 +145,7 @@ class TreesManagementActivity : AppCompatActivity() {
         }
 
         // Фиксированные ячейки
-        row.addView(makeCell(item.point.id.toString()))
+        row.addView(makeCell(item.point.num.toString()))
         row.addView(makeCell("%.6f".format(item.point.lat)))
         row.addView(makeCell("%.6f".format(item.point.lng)))
 
@@ -180,8 +180,6 @@ class TreesManagementActivity : AppCompatActivity() {
             layoutParams = LinearLayout.LayoutParams(columnWidth, LinearLayout.LayoutParams.MATCH_PARENT)
             setPadding(dpToPx(12), 0, dpToPx(12), 0)
             gravity = android.view.Gravity.CENTER_VERTICAL
-            maxLines = 2
-            ellipsize = android.text.TextUtils.TruncateAt.END
         }
     }
 
@@ -192,8 +190,6 @@ class TreesManagementActivity : AppCompatActivity() {
             setTextColor(ContextCompat.getColor(this@TreesManagementActivity, R.color.black))
             layoutParams = LinearLayout.LayoutParams(columnWidth, LinearLayout.LayoutParams.WRAP_CONTENT)
             setPadding(dpToPx(12), dpToPx(10), dpToPx(12), dpToPx(10))
-            maxLines = 2
-            ellipsize = android.text.TextUtils.TruncateAt.END
         }
     }
 

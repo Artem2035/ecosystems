@@ -23,7 +23,7 @@ import com.example.ecosystems.db.entity.table.TablePropertyEntity
     PlanFileEntity::class,
     TableEntity::class,
     TablePropertyEntity::class,
-    PointValueEntity::class], exportSchema = false, version = 10) // список всех Entity
+    PointValueEntity::class], exportSchema = false, version = 11) // список всех Entity
 
 abstract class AppDatabase : RoomDatabase() {
     abstract fun layerDao(): LayerEntityDao

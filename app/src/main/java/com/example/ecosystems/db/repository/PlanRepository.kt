@@ -6,7 +6,7 @@ import com.example.ecosystems.db.entity.PlanFileEntity
 
 class PlanRepository(private val planEntityDao: PlanEntityDao) {
 
-    fun getAllPlans() = planEntityDao.getAllPlans()
+    suspend fun getAllPlans() = planEntityDao.getAllPlans()
 
     suspend fun insertAll(plans: List<PlanEntity>) {
         planEntityDao.insertAll(plans)
@@ -18,7 +18,7 @@ class PlanRepository(private val planEntityDao: PlanEntityDao) {
 
     fun getAllPlansWithData() = planEntityDao.getAllPlansWithData()
 
-    fun getPlanData(planId: Int) = planEntityDao.getPlanWithData(planId)
+    suspend fun getPlanData(planId: Int) = planEntityDao.getPlanWithData(planId)
 
-    fun getPlanFiles(planId: Int) = planEntityDao.getPlanFiles(planId)
+    suspend fun getPlanFiles(planId: Int) = planEntityDao.getPlanFiles(planId)
 }

@@ -1,6 +1,5 @@
 package com.example.ecosystems.Dialogs
 
-import android.annotation.SuppressLint
 import android.app.Dialog
 import android.os.Bundle
 import android.os.Handler
@@ -36,7 +35,7 @@ class PointDataDialogFragment(private val pointId:Int,
 
     // propertyId -> EditText, чтобы при сохранении собрать значения
     private val editTextMap = mutableMapOf<Int, EditText>()
-    @SuppressLint("MissingInflatedId")
+
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         val view = requireActivity().layoutInflater
             .inflate(R.layout.dialog_point_data, null)
@@ -60,21 +59,9 @@ class PointDataDialogFragment(private val pointId:Int,
         view.findViewById<AppCompatButton>(R.id.savePointValuesButton).setOnClickListener {
             savePointValues()
         }
-
-        /*lifecycleScope.launch {
-
-
-            val tableWithProperties = withContext(Dispatchers.IO) {
-                tableRepository.getTableWithProperties(tableId)
-            }
-
-            layerRepository.getPointWithValuesByPointId(pointId)
-                ?.flowOn(Dispatchers.IO)
-                ?.collect { list ->
-                    val item = list.firstOrNull() ?: return@collect
-                    bindData(item)
-                }
-        }*/
+        view.findViewById<AppCompatButton>(R.id.deletePointButton).setOnClickListener {
+            showDeleteConfirmation()
+        }
 
         lifecycleScope.launch {
             val layerId = withContext(Dispatchers.IO){ layerRepository.getLayerIdByPointId(pointId)}
@@ -97,7 +84,7 @@ class PointDataDialogFragment(private val pointId:Int,
                 ?.associate { it.value.propertyId to it.value.value }
                 ?: emptyMap()
 
-            pointNumberText.setText(pointWithValues?.point?.id?.toString() ?: "—")
+            pointNumberText.setText(pointWithValues?.point?.num?.toString() ?: "—")
             latitudeText.text    = pointWithValues?.point?.lat?.let { "%.6f".format(it) } ?: "—"
             longitudeText.text   = pointWithValues?.point?.lng?.let { "%.6f".format(it) } ?: "—"
 
@@ -114,77 +101,11 @@ class PointDataDialogFragment(private val pointId:Int,
         return dialog
     }
 
-    /*private fun bindData(item: LayerPointWithValues) {
-        val point = item.point
-
-        pointNumberText.text = point.num.toString()
-        latitudeText.text    = "%.6f".format(point.lat)
-        longitudeText.text   = "%.6f".format(point.lng)
-
-        val treeNumber = item.values
-            .firstOrNull { it.property.name == "Номер учетного дерева" }
-            ?.value?.value
-            ?: "—"
-
-        treeNumberText.text = treeNumber
-
-        propertiesContainer.removeAllViews()
-
-        item.values
-            .sortedBy { it.property.sortOrder }
-            .forEach { addPropertyRow(it) }
-    }*/
-
-    /*private fun addPropertyRow(pv: PointValueWithProperty) {
-        val label = pv.property.displayName
-            ?.takeIf { it.isNotBlank() }
-            ?: pv.property.name
-
-        val value = pv.value.value
-            .takeIf { it.isNotBlank() }
-            ?: "—"
-
-        val units = pv.property.units
-            .takeIf { it.isNotBlank() }
-
-        val displayValue = if (units != null) "$value $units" else value
-
-        val context = requireContext()
-
-        // label
-        val labelView = TextView(context).apply {
-            text = label
-            textSize = 13f
-            setTextColor(ContextCompat.getColor(context, R.color.gray))
-            setPadding(0, 0, 0, dpToPx(4))
-        }
-
-        // value
-        val valueView = TextView(context).apply {
-            text = displayValue
-            textSize = 15f
-            setBackgroundResource(R.drawable.input_background_registration)
-            setPadding(dpToPx(10), dpToPx(10), dpToPx(10), dpToPx(10))
-            val lp = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            )
-            lp.bottomMargin = dpToPx(12)
-            layoutParams = lp
-        }
-
-        propertiesContainer.addView(labelView)
-        propertiesContainer.addView(valueView)
-    }*/
-
     private fun addPropertyRow(property: TablePropertyEntity, value: String) {
         val label = property.displayName
             ?.takeIf { it.isNotBlank() }
             ?: property.name
 
-/*        val units = property.units.takeIf { it.isNotBlank() }
-        val displayValue = if (units != null && value != "—") "$value $units" else value*/
-
         val context = requireContext()
 
         val labelView = TextView(context).apply {
@@ -193,17 +114,6 @@ class PointDataDialogFragment(private val pointId:Int,
             setTextColor(ContextCompat.getColor(context, R.color.gray))
             setPadding(0, 0, 0, dpToPx(4))
         }
-
-/*        val valueView = EditText(context).apply {
-            setText(displayValue)
-            textSize = 15f
-            setBackgroundResource(R.drawable.input_background_registration)
-            setPadding(dpToPx(10), dpToPx(10), dpToPx(10), dpToPx(10))
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { bottomMargin = dpToPx(12) }
-        }*/
 
         val editText = EditText(context).apply {
             setText(value)
@@ -232,13 +142,6 @@ class PointDataDialogFragment(private val pointId:Int,
     }
 
     private fun savePointValues(){
-/*        val valuesToSave = editTextMap.map { (propertyId, editText) ->
-            PointValueEntity(
-                pointId = pointId,
-                propertyId = propertyId,
-                value = editText.text.toString().trim()
-            )
-        }*/
 
         val valuesToSave = editTextMap
             .filter { (_, editText) -> editText.text.toString().isNotBlank() }
@@ -262,6 +165,27 @@ class PointDataDialogFragment(private val pointId:Int,
                     Toast.LENGTH_SHORT)
                 message.show()
             }
+            dismiss()
+        }
+    }
+
+    private fun showDeleteConfirmation() {
+        AlertDialog.Builder(requireContext())
+            .setTitle("Удаление точки")
+            .setMessage("Удалить точку и все её значения?")
+            .setPositiveButton("Удалить") { _, _ ->
+                deletePoint()
+            }
+            .setNegativeButton("Отмена", null)
+            .show()
+    }
+
+    private fun deletePoint() {
+        lifecycleScope.launch {
+            withContext(Dispatchers.IO) {
+                layerRepository.deletePoint(pointId)
+            }
+            dismiss()
         }
     }
 

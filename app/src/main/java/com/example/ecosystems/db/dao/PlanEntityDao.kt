@@ -30,7 +30,7 @@ interface PlanEntityDao {
     suspend fun delete(layer: LayerEntity)
 
     @Query("SELECT * FROM plans ORDER BY id ASC")
-    fun getAllPlans(): Flow<List<PlanEntity>>
+    suspend fun getAllPlans(): List<PlanEntity>
 
     @Transaction
     @Query("SELECT * FROM plans")
@@ -38,9 +38,9 @@ interface PlanEntityDao {
 
     @Transaction
     @Query("SELECT * FROM plans WHERE id = :planId")
-    fun getPlanWithData(planId: Int): PlanWithData
+    suspend fun getPlanWithData(planId: Int): PlanWithData
 
     @Transaction
     @Query("SELECT * FROM plan_files WHERE gisObjectId = :planId")
-    fun getPlanFiles(planId: Int): Flow<List<PlanFileEntity>>
+    suspend fun getPlanFiles(planId: Int): List<PlanFileEntity>
 }

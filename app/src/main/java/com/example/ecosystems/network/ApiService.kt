@@ -13,8 +13,9 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.ResponseBody
 import java.io.IOException
 
-class ApiService(private val client: OkHttpClient = OkHttpClient.Builder().build(),
-                 private val BASE_URL: String = "https://smartecosystems.petrsu.ru/") {
+val BASE_URL: String = "https://smartecosystems.petrsu.ru/"
+
+class ApiService(private val client: OkHttpClient = OkHttpClient.Builder().build()) {
 
     @WorkerThread
     fun getDevices(token: String): String {

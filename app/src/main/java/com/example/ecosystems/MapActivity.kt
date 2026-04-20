@@ -191,7 +191,6 @@ class MapActivity : AppCompatActivity()  {
         val button = findViewById<ImageButton>(R.id.showMap)
         button.setOnClickListener {
             showMap()
-            //setContentView(R.layout.activity_map)
             Log.d("test",listOfDevices.toString())
 
             Log.d("get devices", "Success")
@@ -208,10 +207,6 @@ class MapActivity : AppCompatActivity()  {
     fun startProfileActivity(view: View)
     {
         val intent =  Intent(this,PersonalAccount::class.java)
-/*        val bundle = Bundle()
-        bundle.putSerializable("listOfDevices", listOfDevices as java.io.Serializable)
-        bundle.putSerializable("mapOfDevices", mapOfDevices as Serializable)
-        intent.putExtras(bundle)*/
         startActivity(intent)
     }
 
