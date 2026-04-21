@@ -1,8 +1,8 @@
 package com.example.ecosystems
 
-import android.annotation.SuppressLint
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -26,6 +26,7 @@ import kotlinx.coroutines.withContext
 
 class TreesManagementActivity : AppCompatActivity() {
     private var planId: Int = 0
+    private val deletedPointIds = mutableListOf<Int>()
 
     private lateinit var headerRow: LinearLayout
     private lateinit var tableBody: LinearLayout
@@ -37,7 +38,6 @@ class TreesManagementActivity : AppCompatActivity() {
     private lateinit var tableRepository: TableRepository
     private lateinit var tableDao: TableEntityDao
 
-    @SuppressLint("MissingInflatedId")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_trees_management)
@@ -139,7 +139,11 @@ class TreesManagementActivity : AppCompatActivity() {
             )
             setOnClickListener {
                 // открыть диалог или детальное view по точке
-                PointDataDialogFragment(item.point.id, layerRepository, tableRepository)
+                PointDataDialogFragment(item.point.id, layerRepository, tableRepository,
+                    onPointDeleted = { deletedId ->
+                        deletedPointIds.add(deletedId)
+                        setDeletedResult()
+                    })
                     .show(supportFragmentManager, "point_data")
             }
         }
@@ -201,9 +205,15 @@ class TreesManagementActivity : AppCompatActivity() {
         return true
     }
 
-    fun startForestTaxationActivity(view: View)
-    {
-        val intent =  Intent(this,ForestTaxationActivity::class.java)
-        startActivity(intent)
+    private fun setDeletedResult() {
+        Log.d("Launcher", "setDeletedResult: $deletedPointIds")
+        val intent = Intent().apply {
+            putIntegerArrayListExtra(EXTRA_DELETED_POINT_IDS, ArrayList(deletedPointIds))
+        }
+        setResult(RESULT_OK, intent)
+    }
+
+    companion object {
+        const val EXTRA_DELETED_POINT_IDS = "deleted_point_ids"
     }
 }

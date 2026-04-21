@@ -26,7 +26,8 @@ import kotlinx.coroutines.withContext
 
 class PointDataDialogFragment(private val pointId:Int,
                               private var layerRepository: LayerRepository,
-                              private val tableRepository: TableRepository) : DialogFragment() {
+                              private val tableRepository: TableRepository,
+                              private val onPointDeleted: ((pointId: Int) -> Unit)? = null) : DialogFragment() {
 
     private lateinit var pointNumberText: EditText
     private lateinit var latitudeText: TextView
@@ -182,6 +183,7 @@ class PointDataDialogFragment(private val pointId:Int,
 
     private fun deletePoint() {
         lifecycleScope.launch {
+            onPointDeleted?.invoke(pointId)
             withContext(Dispatchers.IO) {
                 layerRepository.deletePoint(pointId)
             }

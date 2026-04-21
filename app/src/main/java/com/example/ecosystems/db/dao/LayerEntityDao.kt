@@ -146,7 +146,7 @@ interface LayerEntityDao {
 
     //получить id слоя по известному id точки
     @Query("SELECT layerId FROM layer_points WHERE id = :pointId")
-    fun getLayerIdByPointId(pointId: Int): Int
+    suspend fun getLayerIdByPointId(pointId: Int): Int
 
     // получить слои типа 'points' для плана нужным planId
     @Query("SELECT * FROM layers WHERE gisObjectId = :planId AND type = 'points' ORDER BY name ASC")

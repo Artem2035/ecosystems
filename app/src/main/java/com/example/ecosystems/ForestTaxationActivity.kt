@@ -2,7 +2,6 @@ package com.example.ecosystems
 
 
 import SecureTokenManager
-import android.annotation.SuppressLint
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -17,6 +16,7 @@ import android.util.Log
 import android.view.View
 import android.widget.ImageButton
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.AppCompatButton
 import androidx.lifecycle.lifecycleScope
@@ -27,6 +27,7 @@ import com.example.ecosystems.PhotoViewDialog.ImageAnnotationDialog
 import com.example.ecosystems.Plan.PlanInfoActivity
 import com.example.ecosystems.Plan.PlanSearchDialogFragment
 import com.example.ecosystems.SettingsDialogFragment.SettingsDialogFragment
+import com.example.ecosystems.data.local.PointMarkerEntry
 import com.example.ecosystems.db.AppDatabase
 import com.example.ecosystems.db.dao.LayerEntityDao
 import com.example.ecosystems.db.dao.PlanEntityDao
@@ -83,9 +84,12 @@ class ForestTaxationActivity : AppCompatActivity() {
     /*список ClusterListener для кластеризуемых коллекции точек*/
     private var libraryImagesClusterListenerList: MutableList<ClusterListener> = mutableListOf()
     /*список кластеризуемых коллекции слоя типа points*/
-    private var pointsCollectionList: MutableList<ClusterizedPlacemarkCollection> = mutableListOf()
-
+    //private var pointsCollectionList: MutableList<ClusterizedPlacemarkCollection> = mutableListOf()
+    /*map кластеризуемых коллекции слоя типа points, где ключ - id слоя, к которому коллекция относится*/
     private var pointsCollectionMap: MutableMap<Int, ClusterizedPlacemarkCollection> = mutableMapOf()
+    /* Реестр: pointId -> PlacemarkMapObject, для возомжности удалить маркер через кластер*/
+    private val pointMarkersMap2: MutableMap<Int, PlacemarkMapObject> = mutableMapOf()
+    private val pointMarkersMap: MutableMap<Int, PointMarkerEntry> = mutableMapOf()
     /*список ClusterListener для кластеризуемых коллекции точек для списка слоев типа points*/
     private var pointsClusterListenerList: MutableList<ClusterListener> = mutableListOf()
 
@@ -122,7 +126,23 @@ class ForestTaxationActivity : AppCompatActivity() {
     private var draggingPointId: Int? = null
     private var draggingPlacemark: PlacemarkMapObject? = null
 
-    @SuppressLint("MissingInflatedId")
+    private val treesManagementLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        Log.d("Launcher", "resultCode=${result.resultCode}, data=${result.data}")
+        Log.d("Launcher", "deletedIds=${result.data?.getIntegerArrayListExtra(TreesManagementActivity.EXTRA_DELETED_POINT_IDS)}")
+
+        if (result.resultCode == RESULT_OK) {
+            val deletedIds = result.data
+                ?.getIntegerArrayListExtra(TreesManagementActivity.EXTRA_DELETED_POINT_IDS)
+                ?: return@registerForActivityResult
+
+            deletedIds.forEach { pointId ->
+                removePointFromMap(pointId)
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_forest_taxation)
@@ -150,21 +170,6 @@ class ForestTaxationActivity : AppCompatActivity() {
         tempObjects = mapObjects.addCollection() // временные объекты (точки и линии при выборе)
         // Слушатель нажатий на карту
         mapView.mapWindow.map.addInputListener(mapInputListener)
-
-        /*mapView.mapWindow.map.addInputListener(object : InputListener {
-            override fun onMapTap(map: com.yandex.mapkit.map.Map, point: Point) {
-                if (isSelecting) {
-                    onMapTapped(point)
-                }
-            }
-
-            override fun onMapLongTap(map: com.yandex.mapkit.map.Map, point: Point) {
-                Log.d("tag122", "${pointsCollectionMap}")
-                runOnUiThread {
-                    onLongTapOnMap(point.latitude, point.longitude)
-                }
-            }
-        })*/
 
         selectButton = findViewById(R.id.addPolygonButton)
         // Кнопка для активации режима выбора
@@ -269,6 +274,7 @@ class ForestTaxationActivity : AppCompatActivity() {
         }
     }
 
+    /*обработчик перемещения точки при длительном нажатии и ее перемещении*/
     private val pointDragListener = object : MapObjectDragListener {
 
         override fun onMapObjectDragStart(mapObject: MapObject) {
@@ -305,10 +311,13 @@ class ForestTaxationActivity : AppCompatActivity() {
                     Toast.LENGTH_SHORT
                 ).show()
             }
-
-            pointsCollectionList.forEach {
+            pointsCollectionMap.values.forEach {
                 it.clusterPlacemarks(50.0, 17)
             }
+
+/*            pointsCollectionList.forEach {
+                it.clusterPlacemarks(50.0, 17)
+            }*/
 
             isDragging = false
             draggingPointId = null
@@ -339,7 +348,7 @@ class ForestTaxationActivity : AppCompatActivity() {
         Log.d("Map Tap", "Map tap")
     }
 
-    //при длительном нажатии создаем точку, если выбран гис объект (план)
+    /*при длительном нажатии создаем точку, если выбран гис объект (план)*/
     private fun onLongTapOnMap(lat: Double, lng: Double) {
         if(selectedPlan == null){
             Toast.makeText(this, "Гис объект (план) не выбран!", Toast.LENGTH_SHORT).show()
@@ -366,7 +375,7 @@ class ForestTaxationActivity : AppCompatActivity() {
         }
     }
 
-    //создание новой точки (маркера) и открытие диалага с параметрами
+    /*создание новой точки (маркера) и открытие диалага с параметрами*/
     private suspend fun createPointAndOpenDialog(
         layer: LayerEntity,
         num: Int,
@@ -410,11 +419,14 @@ class ForestTaxationActivity : AppCompatActivity() {
             PointDataDialogFragment(
                 pointId = newPointId,
                 layerRepository = layerRepository,
-                tableRepository = tableRepository
+                tableRepository = tableRepository,
+                onPointDeleted = { deletedId ->
+                    removePointFromMap(deletedId)
+                }
             ).show(supportFragmentManager, "point_data_$newPointId")
         }
     }
-    //добавить маркер в коллекцию
+    /*добавить маркер в коллекцию*/
     private fun addMarkerToCollection(
         layerId: Int,
         pointId: Int,
@@ -431,7 +443,7 @@ class ForestTaxationActivity : AppCompatActivity() {
             val listener = createLibraryImagesClusterListener(colorInt)
             val newCollection = mapObjects.addClusterizedPlacemarkCollection(listener)
 
-            newCollection.addPlacemark().apply {
+            val placemark =  newCollection.addPlacemark().apply {
                 geometry = Point(lat, lng)
                 setUserData(pointId)
                 setText(num.toString())
@@ -444,10 +456,11 @@ class ForestTaxationActivity : AppCompatActivity() {
 
             pointsClusterListenerList.add(listener)
             pointsCollectionMap[layerId] = newCollection
+            pointMarkersMap[pointId] = PointMarkerEntry(placemark, newCollection)
         }
         else {
             // Коллекция уже есть — просто добавляем маркер и перекластеризуем
-            collection.addPlacemark().apply {
+            val placemark = collection.addPlacemark().apply {
                 geometry = Point(lat, lng)
                 setUserData(pointId)
                 setText(num.toString())
@@ -457,7 +470,28 @@ class ForestTaxationActivity : AppCompatActivity() {
                 setDragListener(pointDragListener)        // добавить listener
             }
             collection.clusterPlacemarks(50.0, 17)
+            pointMarkersMap[pointId] = PointMarkerEntry(placemark, collection)
         }
+    }
+    /*удалить маркер точки из кластера*/
+    fun removePointFromMap(pointId: Int) {
+        val entry = pointMarkersMap.remove(pointId) ?: return
+        runOnUiThread {
+            entry.collection.remove(entry.placemark)
+            entry.collection.clusterPlacemarks(50.0, 17)
+        }
+/*        lifecycleScope.launch{
+
+
+            val marker = pointMarkersMap.remove(pointId) ?: return@launch
+            val layerId = layerRepository.getLayerIdByPointId(pointId)
+
+            val clusterCollection = pointsCollectionMap.get(layerId) ?: return@launch
+            runOnUiThread {
+                clusterCollection.remove(marker)
+                clusterCollection.clusterPlacemarks(50.0, 17)
+            }
+        }*/
     }
 
     override fun onStart() {
@@ -484,7 +518,8 @@ class ForestTaxationActivity : AppCompatActivity() {
         val bundle = Bundle()
         bundle.putSerializable("planId", selectedPlan?.plainId)
         intent.putExtras(bundle)
-        startActivity(intent)
+        //startActivity(intent)
+        treesManagementLauncher.launch(intent)
     }
 
     private fun drawPolygon() {
@@ -501,7 +536,9 @@ class ForestTaxationActivity : AppCompatActivity() {
         //tempObjects.clear() // очистить временные точки
     }
 
+
     private var customLayer: Layer? = null
+    /*добавление слоя с кастомными тайлами карты*/
     private fun addTileLayer(LayerId: String, TileFileName: String): Layer {
         val map = mapView.mapWindow.map
 
@@ -607,7 +644,7 @@ class ForestTaxationActivity : AppCompatActivity() {
                         Log.d("result", "${result}")
                         listOfPlanLayers = result.get("layers") as MutableList<Map<String, Any?>>
                         planPointsMap.clear()
-                        pointsCollectionList.clear()
+                        //pointsCollectionList.clear()
                         pointsCollectionMap.clear()
                         pointsClusterListenerList.clear()
                         planLibraryImagesMap.clear()
@@ -661,7 +698,7 @@ class ForestTaxationActivity : AppCompatActivity() {
                         cameraPosition.zoom, cameraPosition.azimuth, cameraPosition.tilt)
                     mapView.mapWindow.map.move(newCameraPosition)
                     planPointsMap.clear()
-                    pointsCollectionList.clear()
+                    //pointsCollectionList.clear()
                     pointsCollectionMap.clear()
                     pointsClusterListenerList.clear()
                     planLibraryImagesMap.clear()
@@ -680,7 +717,10 @@ class ForestTaxationActivity : AppCompatActivity() {
         val id = mapObject.userData
 
         if(id != null){
-            val dialog = PointDataDialogFragment(id.toString().toDouble().toInt(), layerRepository, tableRepository)
+            val dialog = PointDataDialogFragment(id.toString().toDouble().toInt(), layerRepository, tableRepository,
+                onPointDeleted = { deletedId ->
+                    removePointFromMap(deletedId)
+                })
             dialog.show(supportFragmentManager, "point_data_dialog")
         }
         true
@@ -702,7 +742,8 @@ class ForestTaxationActivity : AppCompatActivity() {
                 // или сохранить на диск
             }
             dialog.show()
-        }else{
+        }
+        else{
             val message = Toast.makeText(this,"Пока не доступно в офлайн режиме!",Toast.LENGTH_SHORT)
             message.show()
         }
@@ -742,7 +783,70 @@ class ForestTaxationActivity : AppCompatActivity() {
     {
         runOnUiThread{
             val mapObjects = mapView.mapWindow.map.mapObjects
-            if(isInternetAvailable()){
+
+            Log.d("TAG12", "plan1: ${selectedPlan}")
+            lifecycleScope.launch{
+                if (selectedPlan != null){
+
+                    val plan = planRepository.getPlanData(selectedPlan!!.plainId)
+                    plan.layers.forEach {layer->
+                        var colorInt =  Color.parseColor("#FFA500")
+                        if(layer.color != null)
+                            colorInt = Color.parseColor(layer.color)
+                        val tempPointsClusterListener = createLibraryImagesClusterListener(colorInt)
+                        val tempPointsCollection = mapObjects.addClusterizedPlacemarkCollection(tempPointsClusterListener)
+
+                        when(layer.type){
+                            "points" -> {
+                                val pointList = layerRepository.getPointsByLayerId(layer.id)
+                                pointList.forEach { point ->
+                                    val placemark = tempPointsCollection.addPlacemark().apply {
+                                        geometry = Point(point.lat, point.lng)
+                                        setUserData(point.id)
+                                        setText(point.num.toString())
+                                        setIcon(clusterIcon(bgColor = colorInt, textColor = 0xFFFFFFFF.toInt()))
+                                        addTapListener(globalListener)
+                                        isDraggable = true                        // разрешить перетаскивание
+                                        setDragListener(pointDragListener)        // добавить listener
+                                    }
+                                    pointMarkersMap[point.id] = PointMarkerEntry(placemark, tempPointsCollection)
+                                }
+                                pointsClusterListenerList.add(tempPointsClusterListener)
+                                //pointsCollectionList.add(tempPointsCollection)
+                                pointsCollectionMap[layer.id] = tempPointsCollection
+                            }
+                            "library_images" -> {
+                                val imageList = layerRepository.getImagesByLayerId(layer.id)
+                                imageList.forEach { image ->
+                                    tempPointsCollection.addPlacemark().apply {
+                                        geometry = Point(image.lat, image.lng)
+                                        val imageData = mutableMapOf<String, Any?>("filename" to image.filename,
+                                            "num" to image.num, "uuid" to image.uuid)
+                                        setUserData(imageData)
+                                        setIcon(clusterIcon(bgColor = colorInt, textColor = 0xFFFFFFFF.toInt()))
+                                        addTapListener(libraryImagesListener)
+                                    }
+                                }
+                                libraryImagesClusterListenerList.add(tempPointsClusterListener)
+                                libraryImagesCollectionList.add(tempPointsCollection)
+                            }
+                        }
+                    }
+                    pointsCollectionMap.values.forEach {
+                        it.clusterPlacemarks(50.0, 17)
+                    }
+
+                    /*                        pointsCollectionList.forEach {
+                                                it.clusterPlacemarks(50.0, 17)
+                                            }*/
+
+                    libraryImagesCollectionList.forEach {
+                        it.clusterPlacemarks(50.0, 17)
+                    }
+                }
+            }
+
+/*            if(isInternetAvailable()){
                 if(!planPointsMap.isEmpty()){
                     planPointsMap.forEach { uuid, planPointsMap  ->
                         var colorInt =  Color.parseColor("#FFA500")
@@ -766,10 +870,13 @@ class ForestTaxationActivity : AppCompatActivity() {
                             }
                         }
                         pointsClusterListenerList.add(tempLibraryImagesClusterListener)
-                        pointsCollectionList.add(tempLibraryImagesCollection)
+                        //pointsCollectionList.add(tempLibraryImagesCollection)
                         pointsCollectionMap[layerId] = tempLibraryImagesCollection
                     }
-                    pointsCollectionList.forEach {
+                    pointsCollectionMap.values.forEach {
+                        it.clusterPlacemarks(50.0, 17)
+                    }
+                 pointsCollectionList.forEach {
                         it.clusterPlacemarks(50.0, 17)
                     }
                 }
@@ -809,64 +916,8 @@ class ForestTaxationActivity : AppCompatActivity() {
                 }
             }
             else{
-                Log.d("TAG12", "plan1: ${selectedPlan}")
-                lifecycleScope.launch{
-                    if (selectedPlan != null){
 
-                        val plan = planRepository.getPlanData(selectedPlan!!.plainId)
-                        plan.layers.forEach {layer->
-                            var colorInt =  Color.parseColor("#FFA500")
-                            if(layer.color != null)
-                                colorInt = Color.parseColor(layer.color)
-                            val tempPointsClusterListener = createLibraryImagesClusterListener(colorInt)
-                            val tempPointsCollection = mapObjects.addClusterizedPlacemarkCollection(tempPointsClusterListener)
-
-                            when(layer.type){
-                                "points" -> {
-                                    val pointList = layerRepository.getPointsByLayerId(layer.id)
-                                    pointList.forEach { point ->
-                                        tempPointsCollection.addPlacemark().apply {
-                                            geometry = Point(point.lat, point.lng)
-                                            setUserData(point.id)
-                                            setText(point.num.toString())
-                                            setIcon(clusterIcon(bgColor = colorInt, textColor = 0xFFFFFFFF.toInt()))
-                                            addTapListener(globalListener)
-                                            isDraggable = true                        // разрешить перетаскивание
-                                            setDragListener(pointDragListener)        // добавить listener
-                                        }
-                                    }
-                                    pointsClusterListenerList.add(tempPointsClusterListener)
-                                    pointsCollectionList.add(tempPointsCollection)
-                                    pointsCollectionMap[layer.id] = tempPointsCollection
-                                }
-                                "library_images" -> {
-                                    val imageList = layerRepository.getImagesByLayerId(layer.id)
-                                    imageList.forEach { image ->
-                                        tempPointsCollection.addPlacemark().apply {
-                                            geometry = Point(image.lat, image.lng)
-                                            val imageData = mutableMapOf<String, Any?>("filename" to image.filename,
-                                                "num" to image.num, "uuid" to image.uuid)
-                                            setUserData(imageData)
-                                            setIcon(clusterIcon(bgColor = colorInt, textColor = 0xFFFFFFFF.toInt()))
-                                            addTapListener(libraryImagesListener)
-                                        }
-                                    }
-                                    libraryImagesClusterListenerList.add(tempPointsClusterListener)
-                                    libraryImagesCollectionList.add(tempPointsCollection)
-                                }
-                            }
-                        }
-
-                        pointsCollectionList.forEach {
-                            it.clusterPlacemarks(50.0, 17)
-                        }
-
-                        libraryImagesCollectionList.forEach {
-                            it.clusterPlacemarks(50.0, 17)
-                        }
-                    }
-                }
-            }
+            }*/
         }
     }
 }

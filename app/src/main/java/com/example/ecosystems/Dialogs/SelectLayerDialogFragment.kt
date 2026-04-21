@@ -27,6 +27,11 @@ class SelectLayerDialogFragment(
             setPadding(64, 32, 64, 16)
         }
 
+        // Поле ввода номера точки
+        val layerLabel = TextView(context).apply {
+            text = "Выберете слой"
+            textSize = 13f
+        }
         // Спиннер выбора слоя
         val layerSpinner = Spinner(context).apply {
             adapter = ArrayAdapter(
@@ -54,24 +59,10 @@ class SelectLayerDialogFragment(
             ).apply { bottomMargin = 8 }
         }
 
+        container.addView(layerLabel)
         container.addView(layerSpinner)
         container.addView(numLabel)
         container.addView(numInput)
-
-/*        return AlertDialog.Builder(context)
-            .setTitle("Новая точка")
-            .setView(container)
-            .setPositiveButton("Создать") { _, _ ->
-                val numText = numInput.text.toString().trim()
-                if (numText.isBlank()) {
-                    Toast.makeText(context, "Укажите номер точки", Toast.LENGTH_SHORT).show()
-                    return@setPositiveButton
-                }
-                val selectedLayer = layers[layerSpinner.selectedItemPosition]
-                onConfirmed(selectedLayer, numText.toInt())
-            }
-            .setNegativeButton("Отмена", null)
-            .create()*/
 
         val dialog = AlertDialog.Builder(context)
             .setView(container)

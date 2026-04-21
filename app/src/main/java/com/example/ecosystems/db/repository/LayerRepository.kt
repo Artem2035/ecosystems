@@ -83,7 +83,7 @@ class LayerRepository(private val layerDao: LayerEntityDao) {
         layerDao.getTableIdByLayerId(layerId)
 
     //получить id слоя по известному id точки
-    fun getLayerIdByPointId(pointId: Int) =
+    suspend fun getLayerIdByPointId(pointId: Int) =
         layerDao.getLayerIdByPointId(pointId)
 
     // получить слои типа 'points' для плана нужным planId
