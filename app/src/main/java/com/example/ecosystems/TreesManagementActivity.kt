@@ -13,6 +13,7 @@ import com.example.ecosystems.Dialogs.PointDataDialogFragment
 import com.example.ecosystems.db.AppDatabase
 import com.example.ecosystems.db.dao.LayerEntityDao
 import com.example.ecosystems.db.dao.PlanEntityDao
+import com.example.ecosystems.db.dao.SyncQueueDao
 import com.example.ecosystems.db.dao.TableEntityDao
 import com.example.ecosystems.db.entity.table.TablePropertyEntity
 import com.example.ecosystems.db.relation.LayerPointWithValues
@@ -32,6 +33,7 @@ class TreesManagementActivity : AppCompatActivity() {
     private lateinit var tableBody: LinearLayout
 
     private lateinit var layerDao: LayerEntityDao
+    private lateinit var syncQueueDao: SyncQueueDao
     private lateinit var layerRepository: LayerRepository
     private lateinit var planRepository: PlanRepository
     private lateinit var planDao: PlanEntityDao
@@ -45,7 +47,8 @@ class TreesManagementActivity : AppCompatActivity() {
         layerDao = AppDatabase.getInstance(this).layerDao()
         planDao = AppDatabase.getInstance(this).planDao()
         tableDao = AppDatabase.getInstance(this).tableDao()
-        layerRepository = LayerRepository(layerDao)
+        syncQueueDao = AppDatabase.getInstance(this).syncQueueDao()
+        layerRepository = LayerRepository(layerDao, syncQueueDao)
         planRepository = PlanRepository(planDao)
         tableRepository = TableRepository(tableDao)
 
@@ -63,6 +66,8 @@ class TreesManagementActivity : AppCompatActivity() {
     private fun loadTable() {
         lifecycleScope.launch {
             val plan = withContext(Dispatchers.IO) { planRepository.getPlanData(planId) }
+            if(plan == null)
+                return@launch
             plan.layers.forEach {layer->
                 when(layer.type){
                     "points" -> {

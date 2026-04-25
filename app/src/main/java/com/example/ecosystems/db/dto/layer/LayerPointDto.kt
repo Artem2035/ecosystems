@@ -25,6 +25,7 @@ fun LayerPointDto.toEntity(): LayerPointEntity {
         num = num,
         valuesJson = gson.toJson(values),
         createdAt = formatter.parse(created_at)?.time ?: 0L,
-        updatedAt = formatter.parse(updated_at)?.time ?: 0L
+        updatedAt = formatter.parse(updated_at)?.time ?: 0L,
+        serverId = id //при загрузке с сервера считаем что id и serverId равны
     )
 }

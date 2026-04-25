@@ -2,8 +2,11 @@ package com.example.ecosystems.network
 
 import android.util.Log
 import androidx.annotation.WorkerThread
+import com.example.ecosystems.DataClasses.CreatePointRequest
 import com.example.ecosystems.DataClasses.DeviceInfo
+import com.example.ecosystems.DataClasses.UpdatePointRequest
 import com.google.gson.Gson
+import com.google.gson.JsonObject
 import com.google.gson.reflect.TypeToken
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
@@ -226,11 +229,18 @@ class ApiService(private val client: OkHttpClient = OkHttpClient.Builder().build
             .header("Connection", "keep-alive")
             .build()
 
-        client.newCall(request).execute().use { response ->
+/*        client.newCall(request).execute().use { response ->
             if (!response.isSuccessful)
                 throw IOException("Ошибка: ${response.code}")
 
             return response.body!!.string()
+        }*/
+
+        return client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                throw IOException("Ошибка: ${response.code}")
+            }
+            response.body?.string() ?: throw Exception("Empty body")
         }
     }
 
@@ -242,8 +252,19 @@ class ApiService(private val client: OkHttpClient = OkHttpClient.Builder().build
             .build()
 
         val response = client.newCall(request).execute()
-        if (!response.isSuccessful) throw IOException("Ошибка: ${response.code}")
-        return response.body ?: throw IOException("Пустое тело ответа")
+/*        if (!response.isSuccessful) throw IOException("Ошибка: ${response.code}")
+        return response.body ?: throw IOException("Пустое тело ответа")*/
+
+        if (!response.isSuccessful) {
+            response.close() // ← закрываем response при ошибке, иначе утечка!
+            throw IOException("Ошибка: ${response.code}")
+        }
+
+        // Возвращаем body — НЕ закрываем response здесь
+        return response.body ?: run {
+            response.close()
+            throw IOException("Пустое тело ответа")
+        }
     }
 
     /*регистрация нового аккаунта*/
@@ -287,5 +308,94 @@ class ApiService(private val client: OkHttpClient = OkHttpClient.Builder().build
         val response = client.newCall(request).execute()
         if (!response.isSuccessful) throw IOException("Ошибка: ${response.code}, ${response.message}")
         return response.body ?: throw IOException("Пустое тело ответа")
+    }
+
+    /* Создать новую точку на сервере*/
+    fun saveNewPoint(token: String, request: CreatePointRequest): Int {
+        val gson = Gson()
+
+        val jsonObject = gson.toJsonTree(request).asJsonObject
+        // Добавляем все пары из values в корень JSON
+        request.values.forEach { (key, value) ->
+            jsonObject.add(key, gson.toJsonTree(value))
+        }
+
+        val json = gson.toJson(jsonObject)
+
+        val body = json.toRequestBody("application/json".toMediaType())
+        val httpRequest = Request.Builder()
+            .url("${BASE_URL}api/v1/orthophotoplans/tree_points/${request.layer_uuid}")
+            .header("Authorization", "Bearer ${token}")
+            .header("Content-Type", "application/json")
+            .post(body)
+            .build()
+        Log.d("Sync r", "${request} ")
+        Log.d("Sync j", "${json}")
+        val response = client.newCall(httpRequest).execute()
+        val responseBody = response.body?.string() ?: throw Exception("Empty response")
+
+        if (!response.isSuccessful) {
+            throw Exception("HTTP ${response.code}: $responseBody")
+        }
+
+        // Сервер возвращает объект точки, возвращает новый объект
+        val result = gson.fromJson(responseBody, Map::class.java)
+        val point = result["point"] as Map<String, *>
+        return (point["id"] as Number).toInt()
+    }
+
+    /*сохрнаить изменения для точки слоя типа points на сервере*/
+    fun savePointChanges(token: String, request: UpdatePointRequest, oldValues: String) {
+        val gson = Gson()
+        val jsonObject = gson.toJsonTree(request).asJsonObject
+        // Добавляем все пары из values в корень JSON
+        request.values.forEach { (key, value) ->
+            jsonObject.add(key, gson.toJsonTree(value))
+        }
+
+        // Парсим valuesJson
+        val valuesTemplate = gson.fromJson(oldValues, JsonObject::class.java)
+
+        // Добавляем отсутствующие поля как ""
+        valuesTemplate.entrySet().forEach { (key, _) ->
+            if (!request.values.containsKey(key)) {
+                jsonObject.addProperty(key, "")
+            }
+        }
+        Log.d("Sync old", "$oldValues")
+        Log.d("Sync jo", "$jsonObject")
+
+        val json = gson.toJson(jsonObject)
+
+        val body = json.toRequestBody("application/json".toMediaType())
+
+        val httpRequest = Request.Builder()
+            .url("${BASE_URL}api/v1/orthophotoplans/tree_points/${request.layer_uuid}")
+            .header("Content-Type", "application/json")
+            .header("Authorization", "Bearer ${token}")
+            .post(body)
+            .build()
+
+        val response = client.newCall(httpRequest).execute()
+        if (!response.isSuccessful) {
+            val responseBody = response.body?.string()
+            throw Exception("HTTP ${response.code}: $responseBody")
+        }
+    }
+
+    fun deletePoint(token: String, layerUUID: String, pointId: Int){
+        Log.d("Sync d", "${pointId} ")
+        val request = Request.Builder()
+            .url("${BASE_URL}api/v1/orthophotoplans/tree_points/${layerUUID}/${pointId}")
+            .delete("".toRequestBody())
+            .header("Authorization", "Bearer ${token}")
+            .build()
+
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                val responseBody = response.body?.string() // .string() закрывает body
+                throw Exception("HTTP ${response.code}: $responseBody")
+            }
+        }
     }
 }

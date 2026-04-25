@@ -103,9 +103,12 @@ class PointDataDialogFragment(private val pointId:Int,
     }
 
     private fun addPropertyRow(property: TablePropertyEntity, value: String) {
-        val label = property.displayName
+/*        val label2 = property.displayName
             ?.takeIf { it.isNotBlank() }
-            ?: property.name
+            ?: property.name*/
+
+        val label =  property.name
+
 
         val context = requireContext()
 
@@ -144,6 +147,14 @@ class PointDataDialogFragment(private val pointId:Int,
 
     private fun savePointValues(){
 
+        val numText = pointNumberText.text.toString().trim()
+
+        // Валидация номера
+        if (numText.isBlank() || numText.toIntOrNull() == null) {
+            pointNumberText.error = "Введите корректный номер"
+            return
+        }
+
         val valuesToSave = editTextMap
             .filter { (_, editText) -> editText.text.toString().isNotBlank() }
             .map { (propertyId, editText) ->
@@ -154,13 +165,23 @@ class PointDataDialogFragment(private val pointId:Int,
                 )
             }
 
+        // Собираем propertyId с пустыми значениями одним проходом
+        val emptyPropertyIds = editTextMap
+            .filter { (_, editText) -> editText.text.toString().isBlank() }
+            .map { (propertyId, _) -> propertyId }
+
         lifecycleScope.launch {
-            editTextMap.forEach { (propertyId, editText) ->
-                if (editText.text.toString().isBlank()) {
-                    layerRepository.deletePointValue(pointId, propertyId)
+/*            withContext(Dispatchers.IO) {
+                layerRepository.updatePointNum(pointId, numText.toInt())
+            }*/
+
+            // Сохранить заполненные значения
+            withContext(Dispatchers.IO) {
+                if (emptyPropertyIds.isNotEmpty()) {
+                    layerRepository.deletePointValues(pointId, emptyPropertyIds)
                 }
+                layerRepository.savePointValues(valuesToSave)
             }
-            layerRepository.savePointValues(valuesToSave)
             Handler(Looper.getMainLooper()).post{
                 val message = Toast.makeText(requireContext(),"Сохранено!",
                     Toast.LENGTH_SHORT)

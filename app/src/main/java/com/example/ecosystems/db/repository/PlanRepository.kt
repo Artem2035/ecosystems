@@ -21,4 +21,6 @@ class PlanRepository(private val planEntityDao: PlanEntityDao) {
     suspend fun getPlanData(planId: Int) = planEntityDao.getPlanWithData(planId)
 
     suspend fun getPlanFiles(planId: Int) = planEntityDao.getPlanFiles(planId)
+
+    suspend fun deleteAll() = planEntityDao.deleteAll()
 }

@@ -29,6 +29,10 @@ interface TableEntityDao {
         insertTableProperties(properties)
     }
 
+    //очистить все метаданные таблиц перед загрузкой с сервера
+    @Query("DELETE FROM tables")
+    suspend fun deleteAll()
+
     //SELECT
 
     @Query("SELECT * FROM tables WHERE id = :tableId")

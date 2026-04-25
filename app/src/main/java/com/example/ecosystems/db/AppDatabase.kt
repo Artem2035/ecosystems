@@ -4,8 +4,10 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.TypeConverters
 import com.example.ecosystems.db.dao.LayerEntityDao
 import com.example.ecosystems.db.dao.PlanEntityDao
+import com.example.ecosystems.db.dao.SyncQueueDao
 import com.example.ecosystems.db.dao.TableEntityDao
 import com.example.ecosystems.db.entity.PlanEntity
 import com.example.ecosystems.db.entity.PlanFileEntity
@@ -13,9 +15,12 @@ import com.example.ecosystems.db.entity.layer.LayerEntity
 import com.example.ecosystems.db.entity.layer.LayerImageEntity
 import com.example.ecosystems.db.entity.layer.LayerPointEntity
 import com.example.ecosystems.db.entity.layer.PointValueEntity
+import com.example.ecosystems.db.entity.syncQueue.SyncConverters
+import com.example.ecosystems.db.entity.syncQueue.SyncQueueEntity
 import com.example.ecosystems.db.entity.table.TableEntity
 import com.example.ecosystems.db.entity.table.TablePropertyEntity
 
+@TypeConverters(SyncConverters::class)
 @Database(entities = [LayerEntity::class,
     LayerImageEntity::class,
     LayerPointEntity::class,
@@ -23,12 +28,14 @@ import com.example.ecosystems.db.entity.table.TablePropertyEntity
     PlanFileEntity::class,
     TableEntity::class,
     TablePropertyEntity::class,
-    PointValueEntity::class], exportSchema = false, version = 11) // список всех Entity
+    PointValueEntity::class,
+    SyncQueueEntity::class], exportSchema = false, version = 15) // список всех Entity
 
 abstract class AppDatabase : RoomDatabase() {
     abstract fun layerDao(): LayerEntityDao
     abstract fun planDao(): PlanEntityDao
     abstract fun tableDao(): TableEntityDao
+    abstract fun syncQueueDao(): SyncQueueDao
     companion object {
         @Volatile private var INSTANCE: AppDatabase? = null
 

@@ -37,6 +37,17 @@ interface LayerEntityDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPoint(point: LayerPointEntity): Long  // возвращает rowId (= id)
 
+    //задать serverId у точки для слоя типа points
+    @Query("UPDATE layer_points SET serverId = :serverId WHERE id = :localId")
+    suspend fun setPointServerId(localId: Int, serverId: Int)
+
+    //обновить valuesJson у точки для слоя типа points
+    @Query("UPDATE layer_points SET valuesJson = :valuesJson, updatedAt = :updatedAt WHERE id = :pointId")
+    suspend fun updatePointValuesJson(pointId: Int, valuesJson: String, updatedAt: Long = System.currentTimeMillis())
+
+    //обновить Num у точки для слоя типа points
+    @Query("UPDATE layer_points SET num = :num, updatedAt = :updatedAt WHERE id = :pointId")
+    suspend fun updatePointNum(pointId: Int, num: Int, updatedAt: Long = System.currentTimeMillis())
     @Transaction
     suspend fun insertAllData(
         layers: List<LayerEntity>,
@@ -72,6 +83,10 @@ interface LayerEntityDao {
     //удалить незаполненное значение точки
     @Query("DELETE FROM point_values WHERE pointId = :pointId AND propertyId = :propertyId")
     suspend fun deletePointValue(pointId: Int, propertyId: Int)
+
+    //удалить все незаполненное значение точки
+    @Query("DELETE FROM point_values WHERE pointId = :pointId AND propertyId IN (:propertyIds)")
+    suspend fun deletePointValues(pointId: Int, propertyIds: List<Int>)
 
     //сохранить значения точки
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -115,9 +130,12 @@ interface LayerEntityDao {
     @Query("SELECT * FROM layer_points WHERE layerId = :layerId ORDER BY num ASC")
     suspend fun getPointsByLayerId(layerId: Int): List<LayerPointEntity>
 
-    //получить id слоя по uuid
+    //получить
     @Query("SELECT * FROM layers WHERE uuid = :uuid ORDER BY id ASC")
     fun getLayerIdByUUID(uuid: String): LayerEntity?
+    //получить uuid  слоя по id
+    @Query("SELECT * FROM layers WHERE id = :layerId ORDER BY id ASC")
+    fun getLayerUUIDById(layerId: Int): LayerEntity
 
     @Query("SELECT * FROM layer_points ORDER BY num ASC")
     fun getAllLayerPoints(): Flow<List<LayerPointEntity>>
@@ -133,11 +151,19 @@ interface LayerEntityDao {
 
     @Query("SELECT * FROM point_values")
     fun getAllPointsRaw(): Flow<List<PointValueEntity>>?
+    //получить точку по заданному id
+    @Query("SELECT * FROM layer_points WHERE id = :pointId")
+    fun getPointById(pointId: Int): LayerPointEntity?
 
     //получить значения для точки с данным id
     @Transaction
     @Query("SELECT * FROM layer_points WHERE id = :pointId")
     fun getPointWithValuesByPointId(pointId: Int): Flow<List<LayerPointWithValues>>?
+
+    // получить значения для точки с данным id. Одиночный снимок — не Flow
+    @Transaction
+    @Query("SELECT * FROM layer_points WHERE id = :pointId")
+    suspend fun getPointWithValuesByPointIdOnce(pointId: Int): LayerPointWithValues?
 
     //получить все точки со значениями для слоя с таким id
     @Transaction
@@ -148,7 +174,8 @@ interface LayerEntityDao {
     @Query("SELECT layerId FROM layer_points WHERE id = :pointId")
     suspend fun getLayerIdByPointId(pointId: Int): Int
 
-    // получить слои типа 'points' для плана нужным planId
+    // получить слои типа 'points' для плана с нужным planId
     @Query("SELECT * FROM layers WHERE gisObjectId = :planId AND type = 'points' ORDER BY name ASC")
     suspend fun getPointLayersByPlanId(planId: Int): List<LayerEntity>
 }
+

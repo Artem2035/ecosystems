@@ -23,6 +23,7 @@ import com.example.ecosystems.db.entity.layer.LayerEntity
 import com.example.ecosystems.db.entity.layer.LayerImageEntity
 import com.example.ecosystems.db.entity.layer.LayerPointEntity
 import com.example.ecosystems.db.entity.layer.PointValueEntity
+import com.example.ecosystems.db.entity.syncQueue.SyncManager
 import com.example.ecosystems.db.entity.table.TableEntity
 import com.example.ecosystems.db.entity.table.TablePropertyEntity
 import com.example.ecosystems.db.repository.LayerRepository
@@ -34,16 +35,17 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class SettingsDialogFragment(private val token:String,
                              private var layerRepository: LayerRepository,
                              private var planRepository: PlanRepository,
-                             private var tableRepository: TableRepository) : DialogFragment() {
+                             private var tableRepository: TableRepository,
+                             private val syncManager: SyncManager) : DialogFragment() {
     private val api: ApiService = ApiService()
     private var progressDialog: ProgressDialogFragment? = null
+    private lateinit var syncButton: Button
 
     val formatter = java.text.SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z",
         java.util.Locale.ENGLISH)
@@ -54,10 +56,19 @@ class SettingsDialogFragment(private val token:String,
 
         val button = view.findViewById<Button>(R.id.downloadButton)
         val backButton = view.findViewById<Button>(R.id.backButton)
+        syncButton = view.findViewById<Button>(R.id.syncButton)
 
         val dialog = AlertDialog.Builder(requireContext())
             .setView(view)
             .create()
+
+        syncButton.setOnClickListener {
+            if (!requireContext().isInternetAvailable()) {
+                Toast.makeText(requireContext(), "Нет подключения к сети", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            startSync()
+        }
 
         button.setOnClickListener {
             Log.d("SettingsDialogFragment", "SettingsDialogFragment")
@@ -66,6 +77,7 @@ class SettingsDialogFragment(private val token:String,
                 val gson = Gson()
                 val mapAdapter = gson.getAdapter(object: TypeToken<Map<String, Any?>>() {})
                 try {
+                    clearLocalData()
                     loadTables()
 
                     progressDialog = ProgressDialogFragment()
@@ -170,7 +182,7 @@ class SettingsDialogFragment(private val token:String,
             dismiss()
         }
 
-        lifecycleScope.launch(Dispatchers.IO){
+/*        lifecycleScope.launch(Dispatchers.IO){
             val t1 = layerRepository.getAllPointsRaw()?.first()
             t1?.forEach { a ->
                 Log.d("pv1", "PointValueEntity = ${a}")
@@ -184,14 +196,68 @@ class SettingsDialogFragment(private val token:String,
                     Log.d("pv", "name = ${e.property.name}, v = ${e.value.value}")
                 }
             }
-        }
+        }*/
 
         return dialog
     }
 
+    private fun startSync(){
+        progressDialog = ProgressDialogFragment()
+        progressDialog?.show(parentFragmentManager, "sync_progress")
+        lifecycleScope.launch{
+            val pending = layerRepository.getPending()
+            pending.forEach { a->
+                Log.d("pv", "PointValueEntity = ${a.operation}")
+                Log.d("pv", "PointValueEntity = ${a}")
+            }
+
+            if (pending.isEmpty()) {
+                Toast.makeText(requireContext(), "Нет изменений для синхронизации", Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+
+            launch {
+                syncManager.progress.collect { progress ->
+                    // Уже на Main потоке не нужен withContext — collect вызывается в контексте launch
+                    progressDialog?.updateProgress(progress.current, progress.total)
+                }
+            }
+
+            isCancelable = false
+            syncButton.isEnabled = false
+            Toast.makeText(requireContext(), "Синхронизация...", Toast.LENGTH_SHORT).show()
+
+            val result = withContext(Dispatchers.IO) {
+                syncManager.syncPendingChanges()
+            }
+
+            // Синхронизация завершена — закрываем диалог и показываем итог
+            progressDialog?.dismiss()
+            progressDialog = null
+
+            syncButton.isEnabled = true
+            isCancelable = true
+
+            pending.forEach { a ->
+                Log.d("getPending", "${a}")
+            }
+
+            when (result) {
+                is SyncManager.SyncResult.Success ->
+                    Toast.makeText(requireContext(), "Данные отправлены ✓", Toast.LENGTH_SHORT).show()
+
+                is SyncManager.SyncResult.PartialFailure ->
+                    Toast.makeText(
+                        requireContext(),
+                        "Отправлено частично. Не удалось: ${result.failedCount}",
+                        Toast.LENGTH_LONG
+                    ).show()
+            }
+        }
+    }
+
     private fun loadTables(){
         lifecycleScope.launch(Dispatchers.IO) {
-            //AppDatabase.getInstance(requireContext()).clearAllTables()
 
             val tablesEntities = mutableListOf<TableEntity>()
             val tablePropertiesEntities = mutableListOf<TablePropertyEntity>()
@@ -348,6 +414,13 @@ class SettingsDialogFragment(private val token:String,
                 val message = Toast.makeText(requireContext(),"Данные скачаны!",Toast.LENGTH_SHORT)
                 message.show()
             }
+        }
+    }
+    //очистить планы перед загрузкой с сервера
+    private fun clearLocalData() {
+        lifecycleScope.launch(Dispatchers.IO){
+            planRepository.deleteAll()
+            tableRepository.deleteAll()
         }
     }
 }

@@ -31,9 +31,12 @@ import com.example.ecosystems.data.local.PointMarkerEntry
 import com.example.ecosystems.db.AppDatabase
 import com.example.ecosystems.db.dao.LayerEntityDao
 import com.example.ecosystems.db.dao.PlanEntityDao
+import com.example.ecosystems.db.dao.SyncQueueDao
 import com.example.ecosystems.db.dao.TableEntityDao
 import com.example.ecosystems.db.entity.layer.LayerEntity
 import com.example.ecosystems.db.entity.layer.LayerPointEntity
+import com.example.ecosystems.db.entity.syncQueue.SyncManager
+import com.example.ecosystems.db.entity.syncQueue.buildSyncManager
 import com.example.ecosystems.db.repository.LayerRepository
 import com.example.ecosystems.db.repository.PlanRepository
 import com.example.ecosystems.db.repository.TableRepository
@@ -117,9 +120,11 @@ class ForestTaxationActivity : AppCompatActivity() {
     private lateinit var layerDao: LayerEntityDao
     private lateinit var planDao: PlanEntityDao
     private lateinit var tableDao: TableEntityDao
+    private lateinit var syncQueueDao: SyncQueueDao
     private lateinit var layerRepository: LayerRepository
     private lateinit var planRepository: PlanRepository
     private lateinit var tableRepository: TableRepository
+    private lateinit var syncManager: SyncManager
 
     //перетескивание точки
     private var isDragging = false
@@ -147,16 +152,26 @@ class ForestTaxationActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_forest_taxation)
 
-        layerDao = AppDatabase.getInstance(this).layerDao()
-        planDao = AppDatabase.getInstance(this).planDao()
-        tableDao = AppDatabase.getInstance(this).tableDao()
-        layerRepository = LayerRepository(layerDao)
-        planRepository = PlanRepository(planDao)
-        tableRepository = TableRepository(tableDao)
-
         // Прочитать токен
         val tokenManager = SecureTokenManager(this)
         token = tokenManager.loadToken()!!
+
+        layerDao = AppDatabase.getInstance(this).layerDao()
+        planDao = AppDatabase.getInstance(this).planDao()
+        tableDao = AppDatabase.getInstance(this).tableDao()
+        syncQueueDao = AppDatabase.getInstance(this).syncQueueDao()
+        layerRepository = LayerRepository(layerDao, syncQueueDao)
+        planRepository = PlanRepository(planDao)
+        tableRepository = TableRepository(tableDao)
+        syncManager = buildSyncManager(
+            layerRepository = layerRepository,
+            syncQueueDao = syncQueueDao,
+            layerDao = layerDao,
+            api = api,
+            token = token
+        )
+
+
         mapView = findViewById(R.id.mapView)
         // Мгновенное перемещение
         mapView.mapWindow.map.move(currentCameraPosition)
@@ -207,7 +222,7 @@ class ForestTaxationActivity : AppCompatActivity() {
 
         val settingsImageButton = findViewById<ImageButton>(R.id.settingsImageButton)
         settingsImageButton.setOnClickListener {
-            val dialog = SettingsDialogFragment(token, layerRepository, planRepository, tableRepository)
+            val dialog = SettingsDialogFragment(token, layerRepository, planRepository, tableRepository, syncManager)
             dialog.show(supportFragmentManager, "settings_dialog")
         }
 
@@ -314,10 +329,6 @@ class ForestTaxationActivity : AppCompatActivity() {
             pointsCollectionMap.values.forEach {
                 it.clusterPlacemarks(50.0, 17)
             }
-
-/*            pointsCollectionList.forEach {
-                it.clusterPlacemarks(50.0, 17)
-            }*/
 
             isDragging = false
             draggingPointId = null
@@ -480,18 +491,6 @@ class ForestTaxationActivity : AppCompatActivity() {
             entry.collection.remove(entry.placemark)
             entry.collection.clusterPlacemarks(50.0, 17)
         }
-/*        lifecycleScope.launch{
-
-
-            val marker = pointMarkersMap.remove(pointId) ?: return@launch
-            val layerId = layerRepository.getLayerIdByPointId(pointId)
-
-            val clusterCollection = pointsCollectionMap.get(layerId) ?: return@launch
-            runOnUiThread {
-                clusterCollection.remove(marker)
-                clusterCollection.clusterPlacemarks(50.0, 17)
-            }
-        }*/
     }
 
     override fun onStart() {
@@ -514,11 +513,16 @@ class ForestTaxationActivity : AppCompatActivity() {
 
     fun startTreesManagementActivity(view: View)
     {
+        if (selectedPlan == null) {
+            val message = Toast.makeText(this,"ГИС не выбран!",Toast.LENGTH_SHORT)
+            message.show()
+            return
+        }
+
         val intent =  Intent(this,TreesManagementActivity::class.java)
         val bundle = Bundle()
         bundle.putSerializable("planId", selectedPlan?.plainId)
         intent.putExtras(bundle)
-        //startActivity(intent)
         treesManagementLauncher.launch(intent)
     }
 
@@ -789,6 +793,9 @@ class ForestTaxationActivity : AppCompatActivity() {
                 if (selectedPlan != null){
 
                     val plan = planRepository.getPlanData(selectedPlan!!.plainId)
+                    if(plan == null)
+                        return@launch
+
                     plan.layers.forEach {layer->
                         var colorInt =  Color.parseColor("#FFA500")
                         if(layer.color != null)
@@ -821,7 +828,7 @@ class ForestTaxationActivity : AppCompatActivity() {
                                     tempPointsCollection.addPlacemark().apply {
                                         geometry = Point(image.lat, image.lng)
                                         val imageData = mutableMapOf<String, Any?>("filename" to image.filename,
-                                            "num" to image.num, "uuid" to image.uuid)
+                                            "num" to image.num, "uuid" to layer.uuid)
                                         setUserData(imageData)
                                         setIcon(clusterIcon(bgColor = colorInt, textColor = 0xFFFFFFFF.toInt()))
                                         addTapListener(libraryImagesListener)
@@ -835,10 +842,6 @@ class ForestTaxationActivity : AppCompatActivity() {
                     pointsCollectionMap.values.forEach {
                         it.clusterPlacemarks(50.0, 17)
                     }
-
-                    /*                        pointsCollectionList.forEach {
-                                                it.clusterPlacemarks(50.0, 17)
-                                            }*/
 
                     libraryImagesCollectionList.forEach {
                         it.clusterPlacemarks(50.0, 17)
@@ -928,22 +931,6 @@ fun deepCopy(value: Any?): Any? {
         is List<*> -> value.map { deepCopy(it) }
         else -> value
     }
-}
-
-fun clusterIcon2(bgColor: Int, textColor: Int): ImageProvider {
-    val bmp = Bitmap.createBitmap(60, 60, Bitmap.Config.ARGB_8888)
-    val c = Canvas(bmp)
-    val p = Paint(Paint.ANTI_ALIAS_FLAG)
-
-    p.color = bgColor
-    c.drawCircle(30f, 30f, 15f, p)
-
-    p.color = textColor
-    p.textSize = 26f
-    p.textAlign = Paint.Align.CENTER
-    p.typeface = Typeface.DEFAULT_BOLD
-
-    return ImageProvider.fromBitmap(bmp)
 }
 
 fun clusterIcon(bgColor: Int, textColor: Int): ImageProvider {

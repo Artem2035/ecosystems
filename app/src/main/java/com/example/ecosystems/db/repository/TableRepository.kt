@@ -27,4 +27,6 @@ class TableRepository(private val tableEntityDao: TableEntityDao) {
 
     suspend fun getTablePropertyIdByName(tableId: Int, propertyName: String) =
         tableEntityDao.getTablePropertyIdByName(tableId, propertyName)
+
+    suspend fun deleteAll() = tableEntityDao.deleteAll()
 }

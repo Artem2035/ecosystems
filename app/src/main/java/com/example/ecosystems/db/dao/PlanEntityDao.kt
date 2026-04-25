@@ -29,6 +29,11 @@ interface PlanEntityDao {
     @Delete
     suspend fun delete(layer: LayerEntity)
 
+
+    //очистить все планы перед загрузкой с сервера
+    @Query("DELETE FROM plans")
+    suspend fun deleteAll()
+
     @Query("SELECT * FROM plans ORDER BY id ASC")
     suspend fun getAllPlans(): List<PlanEntity>
 
@@ -38,7 +43,7 @@ interface PlanEntityDao {
 
     @Transaction
     @Query("SELECT * FROM plans WHERE id = :planId")
-    suspend fun getPlanWithData(planId: Int): PlanWithData
+    suspend fun getPlanWithData(planId: Int): PlanWithData?
 
     @Transaction
     @Query("SELECT * FROM plan_files WHERE gisObjectId = :planId")

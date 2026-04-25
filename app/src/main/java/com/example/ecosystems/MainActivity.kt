@@ -31,6 +31,14 @@ class MainActivity : AppCompatActivity() {
             token = tokenManager.loadToken()!!
         }
         val hasToken =  if (!token.isEmpty()) true else false
+        if(!isInternetAvailable() && hasToken){
+            val message = Toast.makeText(this,"Нет интернета! Включен оффлайн режим!",
+                Toast.LENGTH_SHORT)
+            message.show()
+            val intent =  Intent(this,MapActivity::class.java)
+            startActivity(intent)
+        }
+
         val msg = Toast.makeText(this,"has token ${hasToken}",
             Toast.LENGTH_SHORT)
         msg.show()
