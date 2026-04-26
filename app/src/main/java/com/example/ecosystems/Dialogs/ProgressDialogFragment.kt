@@ -8,17 +8,23 @@ import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.DialogFragment
 import com.example.ecosystems.R
 
-class ProgressDialogFragment : DialogFragment() {
+class ProgressDialogFragment(
+    private val textTemplate: String = "Прогресс скачивания данных ГИС объектов: %d/%d") : DialogFragment() {
 
-    private lateinit var progressBar: ProgressBar
-    private lateinit var progressText: TextView
+    private var progressBar: ProgressBar? = null
+    private var progressText: TextView? = null
 
+    // Запоминаем последние значения на случай вызова до инициализации View
+    private var pendingCurrent: Int = 0
+    private var pendingMax: Int = 0
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         val view = requireActivity().layoutInflater
             .inflate(R.layout.dialog_progress, null)
 
         progressBar = view.findViewById(R.id.progressBarHorizontal)
         progressText = view.findViewById(R.id.progressText)
+
+        applyProgress(pendingCurrent, pendingMax)
 
         return AlertDialog.Builder(requireContext())
             .setView(view)
@@ -27,8 +33,23 @@ class ProgressDialogFragment : DialogFragment() {
     }
 
     fun updateProgress(current: Int, max: Int) {
-        progressBar.max = max
-        progressBar.progress = current
-        progressText.text = "Прогресс скачивания данных ГИС объектов: $current/$max"
+        pendingCurrent = current
+        pendingMax = max
+
+        if (progressBar != null) {
+            applyProgress(current, max)
+        }
+    }
+
+    private fun applyProgress(current: Int, max: Int) {
+        progressBar?.max = max
+        progressBar?.progress = current
+        progressText?.text = String.format(textTemplate, current, max)
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        progressBar = null
+        progressText = null
     }
 }

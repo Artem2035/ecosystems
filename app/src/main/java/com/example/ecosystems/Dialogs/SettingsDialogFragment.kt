@@ -64,7 +64,7 @@ class SettingsDialogFragment(private val token:String,
 
         syncButton.setOnClickListener {
             if (!requireContext().isInternetAvailable()) {
-                Toast.makeText(requireContext(), "Нет подключения к сети", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "Нет доступа к интернету!", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
             startSync()
@@ -72,138 +72,120 @@ class SettingsDialogFragment(private val token:String,
 
         button.setOnClickListener {
             Log.d("SettingsDialogFragment", "SettingsDialogFragment")
-            if(requireContext().isInternetAvailable()){
-
-                val gson = Gson()
-                val mapAdapter = gson.getAdapter(object: TypeToken<Map<String, Any?>>() {})
-                try {
-                    clearLocalData()
-                    loadTables()
-
-                    progressDialog = ProgressDialogFragment()
-                    progressDialog?.show(parentFragmentManager, "progress")
-
-                    val planFileEntities = mutableListOf<PlanFileEntity>()
-                    val planEntities = mutableListOf<PlanEntity>()
-
-                    lifecycleScope.launch(Dispatchers.IO) {
-                        var result: Map<String, Any?> = mapAdapter.fromJson(api.loadPlans(token))
-                        val listOfPlans= result.get("plans") as MutableList<Map<String, Any?>>
-
-                        planEntities.addAll(listOfPlans.map { plan ->
-                            val createdAt = formatter.parse(plan["created_at"] as String)?.time ?: 0L
-                            val updatedAt = formatter.parse(plan["updated_at"] as String)?.time ?: 0L
-
-                            val files = plan["files"] as? List<Map<String, Any?>> ?: emptyList()
-                            planFileEntities.addAll(files.map { file ->
-
-                                PlanFileEntity(
-                                    id = (file["id"] as Number).toInt(),
-
-                                    gisObjectId = (file["gis_object_id"] as Number).toInt(),
-
-                                    uuid = file["uuid"] as String,
-                                    name = file["name"] as String,
-                                    description = file["description"] as String?,
-
-                                    originalFilename = file["original_filename"] as String?,
-                                    fileInfoUploadFilename = file["file_info_upload_filename"] as String?,
-                                    fileInfoSize = (file["file_info_size"] as? Number)?.toLong(),
-
-                                    formatType = (file["format_type"] as Number).toInt(),
-                                    statusType = (file["status_type"] as Number).toInt(),
-
-                                    gisCategoryId = (file["gis_category_id"] as Number).toInt(),
-                                    gisCategoryTypeId = (file["gis_category_type_id"] as? Number)?.toInt(),
-
-                                    droneDeviceId = (file["drone_device_id"] as? Number)?.toInt(),
-                                    droneName = file["drone_name"] as String?,
-                                    errorDescription = file["error_description"] as String?,
-
-                                    hasReducedFile = file["has_reduced_file"] as? Boolean,
-
-                                    centerLat = (file["center_lat"] as? Number)?.toDouble(),
-                                    centerLng = (file["center_lng"] as? Number)?.toDouble(),
-
-                                    bound1Lat = (file["bound_1_lat"] as? Number)?.toDouble(),
-                                    bound1Lng = (file["bound_1_lng"] as? Number)?.toDouble(),
-                                    bound2Lat = (file["bound_2_lat"] as? Number)?.toDouble(),
-                                    bound2Lng = (file["bound_2_lng"] as? Number)?.toDouble(),
-
-                                    year = (file["year"] as? Number)?.toInt(),
-
-                                    createdAt = createdAt,
-                                    updatedAt = updatedAt
-                                )
-                            })
-
-                            PlanEntity(
-                                id = (plan["id"] as Number).toInt(),
-                                uuid = plan["uuid"] as String,
-                                name = plan["name"] as String,
-                                description = plan["description"] as String?,
-                                accessType = (plan["access_type"] as Number).toInt(),
-                                categoryId = (plan["category_id"] as? Number)?.toInt(),
-                                userId = (plan["user_id"] as Number).toInt(),
-                                isOwner = plan["is_owner"] as Boolean,
-                                canEdit = plan["can_edit"] as Boolean,
-                                accountIds = Gson().toJson(plan["account_ids"]),
-                                accounts = Gson().toJson(plan["accounts"]),
-                                createdAt = createdAt,
-                                updatedAt = updatedAt
-                            )
-                        })
-
-                        planRepository.insertAll(planEntities)
-                        planRepository.insertAllFiles(planFileEntities)
-
-                        loadPlanLayers(planEntities)
-                    }
-
-                    Log.d("TAG_DG1","1")
-
-                }
-                catch (exception: Exception)
-                {
-                    Log.d("Error","Unexpected code ${exception.message}")
-                    Handler(Looper.getMainLooper()).post{
-                        val message = Toast.makeText(requireContext(),"Unexpected code ${exception.message}",Toast.LENGTH_SHORT)
-                        message.show()
-                    }
-                }
-            }else{
-                Handler(Looper.getMainLooper()).post{
-                    val message = Toast.makeText(requireContext(),"Нет доступа к интернету!",Toast.LENGTH_SHORT)
-                    message.show()
-                }
+            if (!requireContext().isInternetAvailable()) {
+                Toast.makeText(requireContext(), "Нет доступа к интернету!", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
             }
+            showDownloadConfirmation()
         }
         backButton.setOnClickListener {
             dismiss()
         }
 
-/*        lifecycleScope.launch(Dispatchers.IO){
-            val t1 = layerRepository.getAllPointsRaw()?.first()
-            t1?.forEach { a ->
-                Log.d("pv1", "PointValueEntity = ${a}")
-            }
-
-            val t = layerRepository.getAllPointsWithValues()?.first()
-            t?.forEach { a ->
-                Log.d("pv", "PointValueEntity = ${a.point}")
-                Log.d("pv", "values = ${a.values}")
-                a.values.forEach { e ->
-                    Log.d("pv", "name = ${e.property.name}, v = ${e.value.value}")
-                }
-            }
-        }*/
-
         return dialog
     }
 
+    private fun startDownloading(){
+        val gson = Gson()
+        val mapAdapter = gson.getAdapter(object: TypeToken<Map<String, Any?>>() {})
+        try {
+            clearLocalData()
+            loadTables()
+
+            progressDialog = ProgressDialogFragment()
+            progressDialog?.show(parentFragmentManager, "progress")
+
+            val planFileEntities = mutableListOf<PlanFileEntity>()
+            val planEntities = mutableListOf<PlanEntity>()
+
+            lifecycleScope.launch(Dispatchers.IO) {
+                var result: Map<String, Any?> = mapAdapter.fromJson(api.loadPlans(token))
+                val listOfPlans= result.get("plans") as MutableList<Map<String, Any?>>
+
+                planEntities.addAll(listOfPlans.map { plan ->
+                    val createdAt = formatter.parse(plan["created_at"] as String)?.time ?: 0L
+                    val updatedAt = formatter.parse(plan["updated_at"] as String)?.time ?: 0L
+
+                    val files = plan["files"] as? List<Map<String, Any?>> ?: emptyList()
+                    planFileEntities.addAll(files.map { file ->
+
+                        PlanFileEntity(
+                            id = (file["id"] as Number).toInt(),
+
+                            gisObjectId = (file["gis_object_id"] as Number).toInt(),
+
+                            uuid = file["uuid"] as String,
+                            name = file["name"] as String,
+                            description = file["description"] as String?,
+
+                            originalFilename = file["original_filename"] as String?,
+                            fileInfoUploadFilename = file["file_info_upload_filename"] as String?,
+                            fileInfoSize = (file["file_info_size"] as? Number)?.toLong(),
+
+                            formatType = (file["format_type"] as Number).toInt(),
+                            statusType = (file["status_type"] as Number).toInt(),
+
+                            gisCategoryId = (file["gis_category_id"] as Number).toInt(),
+                            gisCategoryTypeId = (file["gis_category_type_id"] as? Number)?.toInt(),
+
+                            droneDeviceId = (file["drone_device_id"] as? Number)?.toInt(),
+                            droneName = file["drone_name"] as String?,
+                            errorDescription = file["error_description"] as String?,
+
+                            hasReducedFile = file["has_reduced_file"] as? Boolean,
+
+                            centerLat = (file["center_lat"] as? Number)?.toDouble(),
+                            centerLng = (file["center_lng"] as? Number)?.toDouble(),
+
+                            bound1Lat = (file["bound_1_lat"] as? Number)?.toDouble(),
+                            bound1Lng = (file["bound_1_lng"] as? Number)?.toDouble(),
+                            bound2Lat = (file["bound_2_lat"] as? Number)?.toDouble(),
+                            bound2Lng = (file["bound_2_lng"] as? Number)?.toDouble(),
+
+                            year = (file["year"] as? Number)?.toInt(),
+
+                            createdAt = createdAt,
+                            updatedAt = updatedAt
+                        )
+                    })
+
+                    PlanEntity(
+                        id = (plan["id"] as Number).toInt(),
+                        uuid = plan["uuid"] as String,
+                        name = plan["name"] as String,
+                        description = plan["description"] as String?,
+                        accessType = (plan["access_type"] as Number).toInt(),
+                        categoryId = (plan["category_id"] as? Number)?.toInt(),
+                        userId = (plan["user_id"] as Number).toInt(),
+                        isOwner = plan["is_owner"] as Boolean,
+                        canEdit = plan["can_edit"] as Boolean,
+                        accountIds = Gson().toJson(plan["account_ids"]),
+                        accounts = Gson().toJson(plan["accounts"]),
+                        createdAt = createdAt,
+                        updatedAt = updatedAt
+                    )
+                })
+
+                planRepository.insertAll(planEntities)
+                planRepository.insertAllFiles(planFileEntities)
+
+                loadPlanLayers(planEntities)
+            }
+        }
+        catch (exception: Exception)
+        {
+            Log.d("Error","Unexpected code ${exception.message}")
+            Handler(Looper.getMainLooper()).post{
+                val message = Toast.makeText(requireContext(),"Unexpected code ${exception.message}",Toast.LENGTH_SHORT)
+                message.show()
+            }
+        }
+    }
+
     private fun startSync(){
-        progressDialog = ProgressDialogFragment()
+        progressDialog = ProgressDialogFragment("Прогресс синхронизации данных объектов: %d/%d")
         progressDialog?.show(parentFragmentManager, "sync_progress")
+
         lifecycleScope.launch{
             val pending = layerRepository.getPending()
             pending.forEach { a->
@@ -213,6 +195,8 @@ class SettingsDialogFragment(private val token:String,
 
             if (pending.isEmpty()) {
                 Toast.makeText(requireContext(), "Нет изменений для синхронизации", Toast.LENGTH_SHORT).show()
+                progressDialog?.dismiss()
+                progressDialog = null
                 return@launch
             }
 
@@ -422,5 +406,16 @@ class SettingsDialogFragment(private val token:String,
             planRepository.deleteAll()
             tableRepository.deleteAll()
         }
+    }
+
+    private fun showDownloadConfirmation() {
+        AlertDialog.Builder(requireContext())
+            .setTitle("Скачивание данных")
+            .setMessage("Скачивание данных приведёт к удалению несинхронизированных данных. Продолжить?")
+            .setPositiveButton("Продолжить") { _, _ ->
+                startDownloading()
+            }
+            .setNegativeButton("Отмена", null)
+            .show()
     }
 }

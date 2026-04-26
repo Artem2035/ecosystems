@@ -47,7 +47,9 @@ fun showDataWindow(deviceId: Int, mapOfDevices: MutableMap<Int, Map<String, Any?
     var moduleTypeId = device.get("module_type_id")
     if(moduleTypeId == null)
         moduleTypeId = ""
-    val lastParameters = device.get("last_parameter_values") as Map<String, Any?>
+    //val lastParameters = device.get("last_parameter_values") as Map<String, Any?>
+    val lastParameters = (device.get("last_parameter_values") as? Map<String, Any?>) ?: emptyMap()
+
     for(parametr in lastParameters.keys)
     {
         val paramId = "${deviceTypeId}_${moduleTypeId}_${parametr}"

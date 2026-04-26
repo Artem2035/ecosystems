@@ -10,13 +10,16 @@ import android.util.Log
 import android.view.View
 import android.widget.ImageButton
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.AppCompatButton
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.ecosystems.DataClasses.Device
 import com.example.ecosystems.DeviceDataTable.showDataWindow
 import com.example.ecosystems.data.local.SecureDevicesParametersManager
+import com.example.ecosystems.db.AppDatabase
 import com.example.ecosystems.network.ApiService
 import com.example.ecosystems.utils.getBitmapFromVectorDrawable
 import com.example.ecosystems.utils.isInternetAvailable
@@ -33,10 +36,14 @@ import com.yandex.mapkit.map.MapObjectTapListener
 import com.yandex.mapkit.map.TextStyle
 import com.yandex.mapkit.mapview.MapView
 import com.yandex.runtime.image.ImageProvider
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.Locale
 
 class MapActivity : AppCompatActivity()  {
     private val api: ApiService = ApiService()
+    private lateinit var tokenManager: SecureTokenManager
     private var currentCameraPosition: CameraPosition = CameraPosition(
         Point(57.907,36.58),
         4.67F,0.0F,0.0F)
@@ -79,7 +86,7 @@ class MapActivity : AppCompatActivity()  {
         taxationImageButton = findViewById(R.id.taxationImageButton)
 
         // Прочитать токен
-        val tokenManager = SecureTokenManager(this)
+        tokenManager = SecureTokenManager(this)
         token = tokenManager.loadToken()!!
         val devicesManager = SecureDevicesParametersManager(this)
         val devicesManagerData = devicesManager.loadData()
@@ -145,7 +152,7 @@ class MapActivity : AppCompatActivity()  {
     }
 
     fun closeButton(view: View) {
-        startMainActivity()
+        showLogOutConfirmation()
     }
 
     fun showListOfDevices(view: View){
@@ -198,10 +205,30 @@ class MapActivity : AppCompatActivity()  {
         }
     }
 
+/*
     fun startMainActivity()
     {
+        tokenManager.clearToken()
+        lifecycleScope.launch(Dispatchers.IO){
+            AppDatabase.getInstance(this@MapActivity).clearAllTables()
+        }
         val intent =  Intent(this,MainActivity::class.java)
         startActivity(intent)
+    }
+*/
+
+    fun startMainActivity() {
+        tokenManager.clearToken()
+        lifecycleScope.launch(Dispatchers.IO) {
+            AppDatabase.getInstance(this@MapActivity).clearAllTables()
+
+            // Intent только после очистки БД
+            withContext(Dispatchers.Main) {
+                val intent = Intent(this@MapActivity, MainActivity::class.java)
+                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                startActivity(intent)
+            }
+        }
     }
 
     fun startProfileActivity(view: View)
@@ -308,6 +335,17 @@ class MapActivity : AppCompatActivity()  {
         profileImageButton.visibility = View.VISIBLE
         imageButton.visibility = View.VISIBLE
         taxationImageButton.visibility = View.VISIBLE
+    }
+
+    private fun showLogOutConfirmation() {
+        AlertDialog.Builder(this)
+            .setTitle("Выход из аккаунта")
+            .setMessage("При выходе из аккаунта все несинхронизированные данные будут удалены. Выйти?")
+            .setPositiveButton("Выйти") { _, _ ->
+                startMainActivity()
+            }
+            .setNegativeButton("Отмена", null)
+            .show()
     }
 }
 

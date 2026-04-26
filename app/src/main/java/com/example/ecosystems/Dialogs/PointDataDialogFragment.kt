@@ -103,12 +103,7 @@ class PointDataDialogFragment(private val pointId:Int,
     }
 
     private fun addPropertyRow(property: TablePropertyEntity, value: String) {
-/*        val label2 = property.displayName
-            ?.takeIf { it.isNotBlank() }
-            ?: property.name*/
-
         val label =  property.name
-
 
         val context = requireContext()
 
@@ -171,10 +166,6 @@ class PointDataDialogFragment(private val pointId:Int,
             .map { (propertyId, _) -> propertyId }
 
         lifecycleScope.launch {
-/*            withContext(Dispatchers.IO) {
-                layerRepository.updatePointNum(pointId, numText.toInt())
-            }*/
-
             // Сохранить заполненные значения
             withContext(Dispatchers.IO) {
                 if (emptyPropertyIds.isNotEmpty()) {

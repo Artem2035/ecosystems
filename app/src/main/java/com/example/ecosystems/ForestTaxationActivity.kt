@@ -43,6 +43,7 @@ import com.example.ecosystems.db.repository.TableRepository
 import com.example.ecosystems.network.ApiService
 import com.example.ecosystems.network.BASE_URL
 import com.example.ecosystems.utils.OsmTileProvider
+import com.example.ecosystems.utils.TileDiskCache
 import com.example.ecosystems.utils.isInternetAvailable
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -78,6 +79,7 @@ private lateinit var mapView: MapView
 class ForestTaxationActivity : AppCompatActivity() {
     private val api: ApiService = ApiService()
     private lateinit var token:String
+    private lateinit var tileDiskCache: TileDiskCache
 
     private var currentCameraPosition: CameraPosition = CameraPosition(Point(61.78932, 34.35919),
         17f, 0.0f, 0.0f)
@@ -86,8 +88,6 @@ class ForestTaxationActivity : AppCompatActivity() {
     private var libraryImagesCollectionList: MutableList<ClusterizedPlacemarkCollection> = mutableListOf()
     /*список ClusterListener для кластеризуемых коллекции точек*/
     private var libraryImagesClusterListenerList: MutableList<ClusterListener> = mutableListOf()
-    /*список кластеризуемых коллекции слоя типа points*/
-    //private var pointsCollectionList: MutableList<ClusterizedPlacemarkCollection> = mutableListOf()
     /*map кластеризуемых коллекции слоя типа points, где ключ - id слоя, к которому коллекция относится*/
     private var pointsCollectionMap: MutableMap<Int, ClusterizedPlacemarkCollection> = mutableMapOf()
     /* Реестр: pointId -> PlacemarkMapObject, для возомжности удалить маркер через кластер*/
@@ -155,6 +155,8 @@ class ForestTaxationActivity : AppCompatActivity() {
         // Прочитать токен
         val tokenManager = SecureTokenManager(this)
         token = tokenManager.loadToken()!!
+
+        tileDiskCache = TileDiskCache(this)
 
         layerDao = AppDatabase.getInstance(this).layerDao()
         planDao = AppDatabase.getInstance(this).planDao()
@@ -546,7 +548,7 @@ class ForestTaxationActivity : AppCompatActivity() {
     private fun addTileLayer(LayerId: String, TileFileName: String): Layer {
         val map = mapView.mapWindow.map
 
-        val osmTileProvider = OsmTileProvider(TileFileName)
+        val osmTileProvider = OsmTileProvider(TileFileName, tileDiskCache, this)
         if (!tileProviders.contains(osmTileProvider)){
             tileProviders.add(osmTileProvider)
         }
@@ -648,7 +650,6 @@ class ForestTaxationActivity : AppCompatActivity() {
                         Log.d("result", "${result}")
                         listOfPlanLayers = result.get("layers") as MutableList<Map<String, Any?>>
                         planPointsMap.clear()
-                        //pointsCollectionList.clear()
                         pointsCollectionMap.clear()
                         pointsClusterListenerList.clear()
                         planLibraryImagesMap.clear()
@@ -689,20 +690,49 @@ class ForestTaxationActivity : AppCompatActivity() {
             }
             else{
                 lifecycleScope.launch {
+                    if(selectedPlan != plan && selectedPlan != null){
+                        val planUUID = selectedPlan!!.planUUID
+                        val currentLayers: List<Layer> = planLayersMap.get(planUUID)!!
+                        for(layer in currentLayers){
+                            if (layer.isValid == true) {
+                                layer.remove()
+                            }
+                        }
+                        planLayersMap.remove(planUUID)
+                    }
                     selectedPlan = plan
 
-                    val list =  planRepository.getPlanFiles(plan.plainId)
-                    list.forEach { file ->
-                        if(file.centerLat != null && file.centerLng != null){
-                            lat = file.centerLat
-                            lng = file.centerLng
+                    val planFiles =  planRepository.getPlanFiles(plan.plainId)
+                    if(!planLayersMap.containsKey(selectedPlan!!.planUUID)){
+                        tileFileNames.clear()
+                        planFiles.forEach{file->
+                            tileFileNames.add(file.uuid)
+                            if(file.centerLat != null && file.centerLng != null){
+                                lat = file.centerLat
+                                lng = file.centerLng
+                            }
+                        }
+                        val layers = mutableListOf<Layer>()
+                        for (tileFile in tileFileNames){
+                            layers.add(addTileLayer(tileFile, tileFile))
+                        }
+                        planLayersMap.put(selectedPlan!!.planUUID, layers)
+                    }
+                    else{
+                        tileFileNames.clear()
+                        planFiles.forEach{file->
+                            tileFileNames.add(file.uuid)
+                            if(file.centerLat != null && file.centerLng != null){
+                                lat = file.centerLat
+                                lng = file.centerLng
+                            }
                         }
                     }
+
                     val newCameraPosition = CameraPosition(Point(lat, lng),
                         cameraPosition.zoom, cameraPosition.azimuth, cameraPosition.tilt)
                     mapView.mapWindow.map.move(newCameraPosition)
                     planPointsMap.clear()
-                    //pointsCollectionList.clear()
                     pointsCollectionMap.clear()
                     pointsClusterListenerList.clear()
                     planLibraryImagesMap.clear()
@@ -740,7 +770,6 @@ class ForestTaxationActivity : AppCompatActivity() {
             val dialog = ImageAnnotationDialog(
                 context = this,
                 imageUri = Uri.parse("${BASE_URL}api/v1/orthophotoplans/layers/images/image/${uuid}/$fileName"),
-                //imageUri = Uri.parse("android.resource://${packageName}/drawable/brand_image_dark")
             ) { annotatedBitmap ->
                 // annotatedBitmap — изображение с нарисованными прямоугольниками от OpenCV
                 // или сохранить на диск
@@ -819,7 +848,6 @@ class ForestTaxationActivity : AppCompatActivity() {
                                     pointMarkersMap[point.id] = PointMarkerEntry(placemark, tempPointsCollection)
                                 }
                                 pointsClusterListenerList.add(tempPointsClusterListener)
-                                //pointsCollectionList.add(tempPointsCollection)
                                 pointsCollectionMap[layer.id] = tempPointsCollection
                             }
                             "library_images" -> {
@@ -848,79 +876,6 @@ class ForestTaxationActivity : AppCompatActivity() {
                     }
                 }
             }
-
-/*            if(isInternetAvailable()){
-                if(!planPointsMap.isEmpty()){
-                    planPointsMap.forEach { uuid, planPointsMap  ->
-                        var colorInt =  Color.parseColor("#FFA500")
-                        if(planPointsMap.get("color") != null)
-                            colorInt = Color.parseColor(planPointsMap.get("color").toString())
-                        val tempLibraryImagesClusterListener = createLibraryImagesClusterListener(colorInt)
-                        val tempLibraryImagesCollection = mapObjects.addClusterizedPlacemarkCollection(tempLibraryImagesClusterListener)
-
-                        val layerId = (planPointsMap.get("id") as Number).toInt()
-                        val data  = planPointsMap.get("data") as Map<String, Any?>
-                        val points = data.get("points") as List<Map<String, Any?>>
-                        points.forEach {point ->
-                            tempLibraryImagesCollection.addPlacemark().apply {
-                                geometry = Point(point.get("lat") as Double, point.get("lng") as Double)
-                                setUserData(point.get("id"))
-                                setText((point.get("num") as Number).toInt().toString())
-                                setIcon(clusterIcon(bgColor = colorInt, textColor = 0xFFFFFFFF.toInt()))
-                                addTapListener(globalListener)
-                                isDraggable = true                        // разрешить перетаскивание
-                                setDragListener(pointDragListener)        // добавить listener
-                            }
-                        }
-                        pointsClusterListenerList.add(tempLibraryImagesClusterListener)
-                        //pointsCollectionList.add(tempLibraryImagesCollection)
-                        pointsCollectionMap[layerId] = tempLibraryImagesCollection
-                    }
-                    pointsCollectionMap.values.forEach {
-                        it.clusterPlacemarks(50.0, 17)
-                    }
-                 pointsCollectionList.forEach {
-                        it.clusterPlacemarks(50.0, 17)
-                    }
-                }
-
-                if(!planLibraryImagesMap.isEmpty()){
-                    Log.d("planLibraryImagesMap", "${planLibraryImagesMap}")
-                    planLibraryImagesMap.forEach { uuid, planLibraryImagesMap  ->
-                        var colorInt =  Color.parseColor("#FFA500")
-                        if(planLibraryImagesMap.get("color") != null)
-                            colorInt = Color.parseColor(planLibraryImagesMap.get("color").toString())
-
-                        //currentLibraryImagesClusterListener = createLibraryImagesClusterListener(colorInt)
-                        //libraryImagesCollection = mapObjects.addClusterizedPlacemarkCollection(currentLibraryImagesClusterListener)
-                        val tempLibraryImagesClusterListener = createLibraryImagesClusterListener(colorInt)
-                        val tempLibraryImagesCollection = mapObjects.addClusterizedPlacemarkCollection(tempLibraryImagesClusterListener)
-
-                        val data  = planLibraryImagesMap.get("data") as Map<String, Any?>
-                        val images = data.get("images") as List<Map<String, Any?>>
-                        Log.d("LibraryImages", "${uuid}")
-                        images.forEach {image ->
-                            tempLibraryImagesCollection.addPlacemark().apply {
-                                geometry = Point(image.get("lat") as Double, image.get("lng") as Double)
-                                val imageData = mutableMapOf<String, Any?>("filename" to image.get("filename"),
-                                    "num" to image.get("num"), "uuid" to uuid)
-                                setUserData(imageData)
-
-                                setIcon(clusterIcon(bgColor = colorInt, textColor = 0xFFFFFFFF.toInt()))
-                                addTapListener(libraryImagesListener)
-                            }
-                        }
-                        libraryImagesClusterListenerList.add(tempLibraryImagesClusterListener)
-                        libraryImagesCollectionList.add(tempLibraryImagesCollection)
-                    }
-                    libraryImagesCollectionList.forEach {
-                        it.clusterPlacemarks(50.0, 17)
-                    }
-                }
-            }
-            else{
-
-            }*/
         }
     }
 }
