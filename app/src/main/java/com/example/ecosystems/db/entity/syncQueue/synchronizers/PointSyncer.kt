@@ -26,7 +26,7 @@ class PointSyncer(
         Log.d("Sync","${item}")
         return when (item.operation) {
             SyncOperation.CREATE -> {
-                val point = layerDao.getPointById(item.entityId) ?: return true
+                val point = layerDao.getPointById(item.entityId) ?: return false
                 val layer = layerDao.getLayerUUIDById(point.layerId)
                 val pointValues = layerDao.getPointWithValuesByPointId(point.id)?.firstOrNull()
                 val pointValuesMap: Map<String, Any?> = pointValues?.firstOrNull()
@@ -37,10 +37,11 @@ class PointSyncer(
                         ?: emptyMap()
                 val serverId = api.saveNewPoint(token, point.toCreateRequest(layer.uuid, pointValuesMap)) // POST
                 layerDao.setPointServerId(item.entityId, serverId)
+                layerRepository.refreshValuesJson(point.id)
                 return true
             }
             SyncOperation.UPDATE -> {
-                val point = layerDao.getPointById(item.entityId) ?: return true
+                val point = layerDao.getPointById(item.entityId) ?: return false
                 val layer = layerDao.getLayerUUIDById(point.layerId)
                 val pointValues = layerDao.getPointWithValuesByPointId(point.id)?.firstOrNull()
                 val pointValuesMap: Map<String, Any?> = pointValues?.firstOrNull()
@@ -50,8 +51,14 @@ class PointSyncer(
                     }
                     ?: emptyMap()
                 val updateRequest = point.toUpdateRequest(layer.uuid, pointValuesMap)
-                if(updateRequest == null)
+                Log.d("savePointValues синк", "$point")
+                Log.d("savePointValues синк pv", "$pointValuesMap")
+                Log.d("savePointValues синк js", "${point.valuesJson}")
+                if(updateRequest == null) {
+                    Log.e("Sync", "UPDATE: serverId == null для локального id=${item.entityId}")
                     return false
+                }
+                Log.d("savePointValues синк", "${updateRequest}")
                 api.savePointChanges(token, updateRequest,  point.valuesJson)
                 layerRepository.refreshValuesJson(point.id)
                 return true
@@ -60,16 +67,12 @@ class PointSyncer(
                 val extra = item.extraData
                     ?.let { Gson().fromJson(it, Map::class.java) }
 
-                val layerUUID = extra?.get("layer_uuid") as? String
+                val layerUUID = extra?.get("layer_uuid") as? String ?: return false
+                val serverId = (extra["server_id"] as? Double)?.toInt() ?: return false
 
-                if (layerUUID == null) {
-                    Log.e("Sync", "DELETE: нет layer_uuid для точки $item, пропускаем")
-                    return false
-                }
-
-                Log.d("Sync i", "${extra} ")
-                Log.d("Sync i", "${layerUUID} ")
-                api.deletePoint(token, layerUUID, item.entityId)
+                Log.d("Sync d", "${extra} ")
+                Log.d("Sync d", "${layerUUID} ")
+                api.deletePoint(token, layerUUID, serverId)
                 return true
             }
         }

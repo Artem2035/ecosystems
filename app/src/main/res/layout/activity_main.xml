@@ -42,7 +42,6 @@
         android:hint="@string/input_login_str_i"
         android:inputType="text"
         android:paddingLeft="10dp"
-        android:text="admin"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.505"
         app:layout_constraintStart_toStartOf="parent"

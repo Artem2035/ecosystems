@@ -101,7 +101,7 @@ interface LayerEntityDao {
 
     //получить id таблицы по id слоя
     @Query("SELECT tableId FROM layers WHERE id = :layerId")
-    fun getTableIdByLayerId(layerId: Int): Int?
+    suspend fun getTableIdByLayerId(layerId: Int): Int?
 
 
     // Layer + images + points

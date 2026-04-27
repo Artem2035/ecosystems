@@ -368,13 +368,10 @@ class ForestTaxationActivity : AppCompatActivity() {
             return
         }
 
-        Log.d("tag122", "${pointsCollectionMap}")
-
         lifecycleScope.launch {
             val pointLayers = withContext(Dispatchers.IO) {
                 layerRepository.getPointLayersByPlanId(selectedPlan!!.plainId)
             }
-            Log.d("tag122", "${pointLayers}")
             if (pointLayers.isEmpty()) {
                 Toast.makeText(this@ForestTaxationActivity, "Нет доступных слоёв", Toast.LENGTH_SHORT).show()
                 return@launch

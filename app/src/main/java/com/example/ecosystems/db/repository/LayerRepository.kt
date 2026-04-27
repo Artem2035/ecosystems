@@ -1,5 +1,6 @@
 package com.example.ecosystems.db.repository
 
+import android.util.Log
 import com.example.ecosystems.db.dao.LayerEntityDao
 import com.example.ecosystems.db.dao.SyncQueueDao
 import com.example.ecosystems.db.entity.layer.LayerEntity
@@ -32,7 +33,7 @@ class LayerRepository(private val layerDao: LayerEntityDao,
         syncQueueDao.enqueue(
             SyncQueueEntity(
                 entityType = SyncEntityType.POINT,
-                entityId = point.serverId,
+                entityId = point.id,
                 operation = SyncOperation.UPDATE
             )
         )
@@ -52,7 +53,7 @@ class LayerRepository(private val layerDao: LayerEntityDao,
         syncQueueDao.enqueue(
             SyncQueueEntity(
                 entityType = SyncEntityType.POINT,
-                entityId = point.serverId,
+                entityId = point.id,
                 operation = SyncOperation.UPDATE
             )
         )
@@ -109,12 +110,15 @@ class LayerRepository(private val layerDao: LayerEntityDao,
 
         if (!isLocalPoint && point.serverId != null) {
             val layer = layerDao.getLayerUUIDById(point.layerId)
-            val extra = Gson().toJson(mapOf("layer_uuid" to layer.uuid))
+            val extra = Gson().toJson(mapOf(
+                "layer_uuid" to layer.uuid,
+                "server_id" to point.serverId
+            ))
 
             syncQueueDao.enqueue(
                 SyncQueueEntity(
                     entityType = SyncEntityType.POINT,
-                    entityId = point.serverId,
+                    entityId = point.id,
                     operation = SyncOperation.DELETE,
                     extraData = extra
                 )
@@ -136,11 +140,11 @@ class LayerRepository(private val layerDao: LayerEntityDao,
 
         // Значения изменились — ставим UPDATE точки целиком
         // дедуплицируем: если уже есть UPDATE точки — заменяем
-        syncQueueDao.removePendingUpdate(SyncEntityType.POINT, pointId)
+        syncQueueDao.removePendingUpdate(SyncEntityType.POINT, point.id)
         syncQueueDao.enqueue(
             SyncQueueEntity(
                 entityType = SyncEntityType.POINT,
-                entityId = point.serverId,
+                entityId = point.id,
                 operation = SyncOperation.UPDATE
             )
         )
@@ -160,11 +164,11 @@ class LayerRepository(private val layerDao: LayerEntityDao,
 
         // Значения изменились — ставим UPDATE точки целиком
         // дедуплицируем: если уже есть UPDATE точки — заменяем
-        syncQueueDao.removePendingUpdate(SyncEntityType.POINT, pointId)
+        syncQueueDao.removePendingUpdate(SyncEntityType.POINT, point.id)
         syncQueueDao.enqueue(
             SyncQueueEntity(
                 entityType = SyncEntityType.POINT,
-                entityId = point.serverId,
+                entityId = point.id,
                 operation = SyncOperation.UPDATE
             )
         )
@@ -175,21 +179,23 @@ class LayerRepository(private val layerDao: LayerEntityDao,
         if (values.isEmpty()) return
 
         val point = layerDao.getPointById(values[0].pointId) ?: return
+
+        Log.d("savePointValues", "$point")
         val isLocalPoint = syncQueueDao.hasCreate(SyncEntityType.POINT, point.id)
+        Log.d("savePointValues", "лок $isLocalPoint")
         if (isLocalPoint || point.serverId == null) {
             // CREATE точки заберёт актуальные значения из Room
             refreshValuesJson(point.id)
+            layerDao.savePointValues(values)
             return
         }
-
         layerDao.savePointValues(values)
-
         // Ставим один UPDATE на точку — независимо от количества изменённых значений
         syncQueueDao.removePendingUpdate(SyncEntityType.POINT, point.id)
         syncQueueDao.enqueue(
             SyncQueueEntity(
                 entityType = SyncEntityType.POINT,
-                entityId = point.serverId,
+                entityId = point.id,
                 operation = SyncOperation.UPDATE
             )
         )
@@ -219,7 +225,7 @@ class LayerRepository(private val layerDao: LayerEntityDao,
     fun getPointsWithValuesByLayerId(layerId: Int) = layerDao.getPointsWithValuesByLayerId(layerId)
 
     //получить id таблицы по id слоя
-    fun getTableIdByLayerId(layerId: Int) = layerDao.getTableIdByLayerId(layerId)
+    suspend fun getTableIdByLayerId(layerId: Int) = layerDao.getTableIdByLayerId(layerId)
 
     //получить id слоя по известному id точки
     suspend fun getLayerIdByPointId(pointId: Int) = layerDao.getLayerIdByPointId(pointId)
