@@ -18,6 +18,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.ecosystems.DataClasses.Device
 import com.example.ecosystems.DeviceDataTable.showDataWindow
+import com.example.ecosystems.Dialogs.ProgressDialogFragment
 import com.example.ecosystems.data.local.SecureDevicesParametersManager
 import com.example.ecosystems.db.AppDatabase
 import com.example.ecosystems.network.ApiService
@@ -205,23 +206,16 @@ class MapActivity : AppCompatActivity()  {
         }
     }
 
-/*
-    fun startMainActivity()
-    {
-        tokenManager.clearToken()
-        lifecycleScope.launch(Dispatchers.IO){
-            AppDatabase.getInstance(this@MapActivity).clearAllTables()
-        }
-        val intent =  Intent(this,MainActivity::class.java)
-        startActivity(intent)
-    }
-*/
 
     fun startMainActivity() {
         tokenManager.clearToken()
         lifecycleScope.launch(Dispatchers.IO) {
-            AppDatabase.getInstance(this@MapActivity).clearAllTables()
 
+            val progressDialog = ProgressDialogFragment("Выход с аккаунта: %d/%d", "Выход")
+            progressDialog.show(supportFragmentManager, "exit_dialog_progress")
+            progressDialog.updateProgress(0, 1)
+            AppDatabase.getInstance(this@MapActivity).clearAllTables()
+            progressDialog.dismiss()
             // Intent только после очистки БД
             withContext(Dispatchers.Main) {
                 val intent = Intent(this@MapActivity, MainActivity::class.java)

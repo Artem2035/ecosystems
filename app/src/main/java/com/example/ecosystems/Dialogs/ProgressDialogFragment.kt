@@ -9,7 +9,8 @@ import androidx.fragment.app.DialogFragment
 import com.example.ecosystems.R
 
 class ProgressDialogFragment(
-    private val textTemplate: String = "Прогресс скачивания данных ГИС объектов: %d/%d") : DialogFragment() {
+    private val textTemplate: String = "Прогресс скачивания данных ГИС объектов: %d/%d",
+    private val textHeading: String = "Загрузка данных") : DialogFragment() {
 
     private var progressBar: ProgressBar? = null
     private var progressText: TextView? = null
@@ -23,6 +24,9 @@ class ProgressDialogFragment(
 
         progressBar = view.findViewById(R.id.progressBarHorizontal)
         progressText = view.findViewById(R.id.progressText)
+        val progressHeadingText: TextView = view.findViewById(R.id.titleText)
+
+        progressHeadingText.text = textHeading
 
         applyProgress(pendingCurrent, pendingMax)
 

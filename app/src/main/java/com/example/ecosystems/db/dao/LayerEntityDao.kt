@@ -79,6 +79,9 @@ interface LayerEntityDao {
     //удалить точку с pointId
     @Query("DELETE FROM layer_points WHERE id = :pointId")
     suspend fun deletePoint(pointId: Int)
+    //удалить точки для слоя с layerId
+    @Query("DELETE FROM layer_points WHERE layerId = :layerId")
+    suspend fun deletePointsByLayerId(layerId: Int)
 
     //удалить незаполненное значение точки
     @Query("DELETE FROM point_values WHERE pointId = :pointId AND propertyId = :propertyId")
@@ -113,6 +116,9 @@ interface LayerEntityDao {
     @Query("SELECT * FROM layers")
     fun getAllLayersWithData(): Flow<List<LayerWithData>>
 
+    // Получить planId (gisObjectId) по layerId
+    @Query("SELECT gisObjectId FROM layers WHERE id = :layerId")
+    suspend fun getPlanIdByLayerId(layerId: Int): Int?
     @Transaction
     @Query("SELECT * FROM layers WHERE gisObjectId = :planId")
     fun observePlanLayersWithData(planId: Int): Flow<List<LayerWithData>>

@@ -42,7 +42,8 @@ class SettingsDialogFragment(private val token:String,
                              private var layerRepository: LayerRepository,
                              private var planRepository: PlanRepository,
                              private var tableRepository: TableRepository,
-                             private val syncManager: SyncManager) : DialogFragment() {
+                             private val syncManager: SyncManager,
+                             private val onSyncComplete: (() -> Unit)? = null) : DialogFragment() {
     private val api: ApiService = ApiService()
     private var progressDialog: ProgressDialogFragment? = null
     private lateinit var syncButton: Button
@@ -56,7 +57,7 @@ class SettingsDialogFragment(private val token:String,
 
         val button = view.findViewById<Button>(R.id.downloadButton)
         val backButton = view.findViewById<Button>(R.id.backButton)
-        syncButton = view.findViewById<Button>(R.id.syncButton)
+        syncButton = view.findViewById(R.id.syncButton)
 
         val dialog = AlertDialog.Builder(requireContext())
             .setView(view)
@@ -188,10 +189,6 @@ class SettingsDialogFragment(private val token:String,
 
         lifecycleScope.launch{
             val pending = layerRepository.getPending()
-            pending.forEach { a->
-                Log.d("pv", "PointValueEntity = ${a.operation}")
-                Log.d("pv", "PointValueEntity = ${a}")
-            }
 
             if (pending.isEmpty()) {
                 Toast.makeText(requireContext(), "Нет изменений для синхронизации", Toast.LENGTH_SHORT).show()
@@ -227,15 +224,27 @@ class SettingsDialogFragment(private val token:String,
             }
 
             when (result) {
-                is SyncManager.SyncResult.Success ->
-                    Toast.makeText(requireContext(), "Данные отправлены ✓", Toast.LENGTH_SHORT).show()
+                is SyncManager.SyncResult.Success -> {
+                    Toast.makeText(requireContext(), "Данные отправлены ✓", Toast.LENGTH_SHORT)
+                        .show()
+                    onSyncComplete?.invoke()
+                }
 
-                is SyncManager.SyncResult.PartialFailure ->
+                is SyncManager.SyncResult.PartialFailure -> {
                     Toast.makeText(
                         requireContext(),
                         "Отправлено частично. Не удалось: ${result.failedCount}",
                         Toast.LENGTH_LONG
                     ).show()
+                    onSyncComplete?.invoke()
+                }
+                else -> {
+                    Toast.makeText(
+                        requireContext(),
+                        "Не удалось выполнить!",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
             }
         }
     }
@@ -397,6 +406,7 @@ class SettingsDialogFragment(private val token:String,
             Handler(Looper.getMainLooper()).post{
                 val message = Toast.makeText(requireContext(),"Данные скачаны!",Toast.LENGTH_SHORT)
                 message.show()
+                onSyncComplete?.invoke()
             }
         }
     }

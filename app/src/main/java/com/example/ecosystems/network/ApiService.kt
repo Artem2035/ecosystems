@@ -229,13 +229,6 @@ class ApiService(private val client: OkHttpClient = OkHttpClient.Builder().build
             .header("Connection", "keep-alive")
             .build()
 
-/*        client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful)
-                throw IOException("Ошибка: ${response.code}")
-
-            return response.body!!.string()
-        }*/
-
         return client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
                 throw IOException("Ошибка: ${response.code}")
@@ -252,11 +245,9 @@ class ApiService(private val client: OkHttpClient = OkHttpClient.Builder().build
             .build()
 
         val response = client.newCall(request).execute()
-/*        if (!response.isSuccessful) throw IOException("Ошибка: ${response.code}")
-        return response.body ?: throw IOException("Пустое тело ответа")*/
 
         if (!response.isSuccessful) {
-            response.close() // ← закрываем response при ошибке, иначе утечка!
+            response.close()
             throw IOException("Ошибка: ${response.code}")
         }
 
@@ -329,10 +320,9 @@ class ApiService(private val client: OkHttpClient = OkHttpClient.Builder().build
             .header("Content-Type", "application/json")
             .post(body)
             .build()
-        Log.d("Sync r", "${request} ")
-        Log.d("Sync j", "${json}")
+
         val response = client.newCall(httpRequest).execute()
-        val responseBody = response.body?.string() ?: throw Exception("Empty response")
+        val responseBody = response.use { it.body?.string() } ?: throw Exception("Empty response")
 
         if (!response.isSuccessful) {
             throw Exception("HTTP ${response.code}: $responseBody")
@@ -362,8 +352,6 @@ class ApiService(private val client: OkHttpClient = OkHttpClient.Builder().build
                 jsonObject.addProperty(key, "")
             }
         }
-        Log.d("Sync old", "$oldValues")
-        Log.d("Sync jo", "$jsonObject")
 
         val json = gson.toJson(jsonObject)
 
@@ -383,6 +371,55 @@ class ApiService(private val client: OkHttpClient = OkHttpClient.Builder().build
         }
     }
 
+    /* Создать новые точки на сервере*/
+    fun savePointsBatch(token: String, layerUUID: String, requests: List<CreatePointRequest>) {
+        val gson = Gson()
+
+        // Для каждой точки — объединяем стандартные поля и values в плоский объект
+        val pointsArray = requests.map { request ->
+            // Сериализуем стандартные поля через JsonObject
+            val pointObject = JsonObject().apply {
+                addProperty("id", request.id)
+                addProperty("num", request.num)
+                addProperty("lat", request.lat)
+                addProperty("lng", request.lng)
+                addProperty("layer_uuid", request.layer_uuid)
+                addProperty("values", "{}")
+            }
+
+            // Разворачиваем values в корень объекта точки
+            request.values.forEach { (key, value) ->
+                pointObject.add(key, gson.toJsonTree(value))
+            }
+
+            pointObject
+        }
+
+        val root = JsonObject().apply {
+            add("points", gson.toJsonTree(pointsArray))
+        }
+
+        val json = gson.toJson(root)
+        Log.d("Sync root", "${root} ")
+        Log.d("Sync json", "${json} ")
+        val body = json.toRequestBody("application/json".toMediaType())
+
+        val httpRequest = Request.Builder()
+            .url("${BASE_URL}api/v1/orthophotoplans/tree_points/${layerUUID}/batch")
+            .header("Authorization", "Bearer ${token}")
+            .header("Content-Type", "application/json")
+            .post(body)
+            .build()
+
+        val response = client.newCall(httpRequest).execute()
+        val responseBody = response.use { it.body?.string() } ?: throw Exception("Empty response")
+
+        if (!response.isSuccessful) {
+            throw Exception("HTTP ${response.code}: $responseBody")
+        }
+    }
+
+    /*удаление точки по id и layerUUID*/
     fun deletePoint(token: String, layerUUID: String, pointId: Int){
         Log.d("Sync d", "${pointId} ")
         val request = Request.Builder()

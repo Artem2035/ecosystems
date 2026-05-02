@@ -48,4 +48,8 @@ interface PlanEntityDao {
     @Transaction
     @Query("SELECT * FROM plan_files WHERE gisObjectId = :planId")
     suspend fun getPlanFiles(planId: Int): List<PlanFileEntity>
+
+    // Получить uuid плана по его id
+    @Query("SELECT uuid FROM plans WHERE id = :planId")
+    suspend fun getPlanUuidById(planId: Int): String?
 }

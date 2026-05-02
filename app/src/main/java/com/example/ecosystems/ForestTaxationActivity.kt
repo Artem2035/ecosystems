@@ -167,8 +167,10 @@ class ForestTaxationActivity : AppCompatActivity() {
         tableRepository = TableRepository(tableDao)
         syncManager = buildSyncManager(
             layerRepository = layerRepository,
+            tableRepository =  tableRepository,
             syncQueueDao = syncQueueDao,
             layerDao = layerDao,
+            planDao= planDao,
             api = api,
             token = token
         )
@@ -224,7 +226,10 @@ class ForestTaxationActivity : AppCompatActivity() {
 
         val settingsImageButton = findViewById<ImageButton>(R.id.settingsImageButton)
         settingsImageButton.setOnClickListener {
-            val dialog = SettingsDialogFragment(token, layerRepository, planRepository, tableRepository, syncManager)
+            val dialog = SettingsDialogFragment(token, layerRepository, planRepository, tableRepository, syncManager){
+                clearMapCollections()
+                DrawObjectsOnMap()
+            }
             dialog.show(supportFragmentManager, "settings_dialog")
         }
 
@@ -358,7 +363,6 @@ class ForestTaxationActivity : AppCompatActivity() {
             tempObjects.clear()
             selectButton.text = "Новый участок"
         }
-        Log.d("Map Tap", "Map tap")
     }
 
     /*при длительном нажатии создаем точку, если выбран гис объект (план)*/
@@ -580,7 +584,6 @@ class ForestTaxationActivity : AppCompatActivity() {
         tempPlanList.clear()
         tempPlanList.addAll(planList)
 
-        Log.d("TAG_DG fa","1")
         val dialog = PlanSearchDialogFragment(planList, tempPlanList) { plan ->
             mapView.mapWindow.map.mapObjects.clear()
 
@@ -591,14 +594,16 @@ class ForestTaxationActivity : AppCompatActivity() {
             if(isInternetAvailable()){
                 if(selectedPlan != plan && selectedPlan != null){
                     val planUUID = selectedPlan!!.planUUID
-                    val currentLayers: List<Layer> = planLayersMap.get(planUUID)!!
-                    for(layer in currentLayers){
-                        layer.remove()
-                        if (layer.isValid == true) {
-                            layer.remove()
+
+                    val currentLayers: List<Layer>? = planLayersMap[planUUID]
+                    if (currentLayers != null){
+                        for(layer in currentLayers){
+                            if (layer.isValid == true) {
+                                layer.remove()
+                            }
                         }
+                        planLayersMap.remove(planUUID)
                     }
-                    planLayersMap.remove(planUUID)
                 }
                 selectedPlan = plan
                 val currentPlan = plansMap.get(selectedPlan!!.planUUID)
@@ -735,7 +740,7 @@ class ForestTaxationActivity : AppCompatActivity() {
                     planLibraryImagesMap.clear()
                     libraryImagesCollectionList.clear()
                     libraryImagesClusterListenerList.clear()
-                    Log.d("TAG12", "DrawObjectsOnMap")
+                    Log.d("DrawObjectsOnMap", "DrawObjectsOnMap")
                     DrawObjectsOnMap()
                 }
             }
@@ -760,7 +765,6 @@ class ForestTaxationActivity : AppCompatActivity() {
     private val libraryImagesListener = MapObjectTapListener { mapObject, point ->
         if(isInternetAvailable()){
             val data = mapObject.userData as Map<String, Any?>
-            Log.d("imageUri", "$data")
             val fileName = data.get("filename").toString()
             val uuid = data.get("uuid").toString()
             Log.d("fileName", "${BASE_URL}api/v1/orthophotoplans/layers/images/image/${uuid}/$fileName")
@@ -813,8 +817,6 @@ class ForestTaxationActivity : AppCompatActivity() {
     {
         runOnUiThread{
             val mapObjects = mapView.mapWindow.map.mapObjects
-
-            Log.d("TAG12", "plan1: ${selectedPlan}")
             lifecycleScope.launch{
                 if (selectedPlan != null){
 
@@ -874,6 +876,19 @@ class ForestTaxationActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    private fun clearMapCollections() {
+        // Удаляем все коллекции точек с карты
+        planPointsMap.clear()
+        pointsCollectionMap.forEach { t, u ->
+            u.clear()
+        }
+        pointsCollectionMap.clear()
+        pointsClusterListenerList.clear()
+        planLibraryImagesMap.clear()
+        libraryImagesCollectionList.clear()
+        libraryImagesClusterListenerList.clear()
     }
 }
 

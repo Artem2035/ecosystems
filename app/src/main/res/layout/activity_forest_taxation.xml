@@ -91,6 +91,7 @@
         android:paddingEnd="5dp"
         android:text="Новый участок"
         android:textColor="@color/black"
+        android:visibility="gone"
         app:cornerRadius="1dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
