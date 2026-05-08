@@ -68,11 +68,15 @@ class TreesManagementActivity : AppCompatActivity() {
             val plan = withContext(Dispatchers.IO) { planRepository.getPlanData(planId) }
             if(plan == null)
                 return@launch
+
             plan.layers.forEach {layer->
+                Log.d("plan 1", "${layer}")
                 when(layer.type){
                     "points" -> {
-                        if(layer.tableId == null)
+                        if(layer.tableId == null) {
+                            Log.e("no  tableId", "${layer.id} нет tableId")
                             return@forEach
+                        }
 
                         // 1. Свойства таблицы — заголовки колонок
                         val tableWithProperties = withContext(Dispatchers.IO) {
@@ -88,6 +92,7 @@ class TreesManagementActivity : AppCompatActivity() {
                         layerRepository.getPointsWithValuesByLayerId(layer.id)
                             ?.flowOn(Dispatchers.IO)
                             ?.collect { points ->
+                                Log.d("plan 2", "${points}")
                                 tableBody.removeAllViews()
                                 points.forEach { point ->
                                     buildRow(point, properties)

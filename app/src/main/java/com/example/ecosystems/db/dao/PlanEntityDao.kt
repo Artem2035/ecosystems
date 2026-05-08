@@ -52,4 +52,8 @@ interface PlanEntityDao {
     // Получить uuid плана по его id
     @Query("SELECT uuid FROM plans WHERE id = :planId")
     suspend fun getPlanUuidById(planId: Int): String?
+
+    // есть ли слои у плана с planId
+    @Query("SELECT COUNT(*) FROM layers WHERE gisObjectId = :planId")
+    suspend fun countLayersByPlanId(planId: Int): Int
 }

@@ -36,7 +36,6 @@ class PointSyncer(
         // items — все CREATE-записи точек
         // Собираем данные по каждой точке
         val results = mutableMapOf<Int, Boolean>()
-        //val gson = Gson()
 
         data class PointBundle(
             val queueItem: SyncQueueEntity,

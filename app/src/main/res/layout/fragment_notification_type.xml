@@ -23,7 +23,7 @@
 
         <View
             android:id="@+id/underline"
-            app:layout_constraintBottom_toTopOf="@+id/backButton2"
+            app:layout_constraintBottom_toTopOf="@+id/planInfoBackButton"
             android:layout_width="match_parent"
             android:layout_height="1dp"
             android:layout_margin="8dp"
@@ -31,7 +31,7 @@
             tools:layout_editor_absoluteX="8dp" />
 
         <androidx.appcompat.widget.AppCompatButton
-            android:id="@+id/backButton2"
+            android:id="@+id/planInfoBackButton"
             app:cornerRadius="1dp"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"

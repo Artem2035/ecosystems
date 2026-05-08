@@ -27,7 +27,7 @@ class SyncManager(
     private val api: ApiService,
     private val token: String,
     private val syncQueueDao: SyncQueueDao,
-    // Реестр синхронизаторов — Map для O(1) поиска по entityType
+    // Реестр синхронизаторов — Map для поиска по entityType
     private val syncers: Map<SyncEntityType, EntitySyncer>
 ) {
     sealed class SyncResult {
@@ -60,7 +60,7 @@ class SyncManager(
             syncer?.canBatch(item.operation) == true
         }
 
-        //группируем по [entityType + operation] ---
+        //группируем по [entityType + operation]
         val batchGroups = batchable.groupBy { it.entityType to it.operation }
         for ((typeOp, items) in batchGroups) {
             val syncer = syncers[typeOp.first] ?: continue

@@ -23,4 +23,6 @@ class PlanRepository(private val planEntityDao: PlanEntityDao) {
     suspend fun getPlanFiles(planId: Int) = planEntityDao.getPlanFiles(planId)
 
     suspend fun deleteAll() = planEntityDao.deleteAll()
+    
+    suspend fun hasPlanData(planId: Int): Boolean = planEntityDao.countLayersByPlanId(planId) > 0
 }

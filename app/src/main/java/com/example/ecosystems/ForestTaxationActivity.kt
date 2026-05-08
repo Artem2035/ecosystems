@@ -24,7 +24,7 @@ import com.example.ecosystems.DataClasses.Plan
 import com.example.ecosystems.Dialogs.PointDataDialogFragment
 import com.example.ecosystems.Dialogs.SelectLayerDialogFragment
 import com.example.ecosystems.PhotoViewDialog.ImageAnnotationDialog
-import com.example.ecosystems.Plan.PlanInfoActivity
+import com.example.ecosystems.Plan.PlanInfoDialogFragment
 import com.example.ecosystems.Plan.PlanSearchDialogFragment
 import com.example.ecosystems.SettingsDialogFragment.SettingsDialogFragment
 import com.example.ecosystems.data.local.PointMarkerEntry
@@ -33,6 +33,8 @@ import com.example.ecosystems.db.dao.LayerEntityDao
 import com.example.ecosystems.db.dao.PlanEntityDao
 import com.example.ecosystems.db.dao.SyncQueueDao
 import com.example.ecosystems.db.dao.TableEntityDao
+import com.example.ecosystems.db.entity.PlanEntity
+import com.example.ecosystems.db.entity.PlanFileEntity
 import com.example.ecosystems.db.entity.layer.LayerEntity
 import com.example.ecosystems.db.entity.layer.LayerPointEntity
 import com.example.ecosystems.db.entity.syncQueue.SyncManager
@@ -78,6 +80,7 @@ private lateinit var mapView: MapView
 
 class ForestTaxationActivity : AppCompatActivity() {
     private val api: ApiService = ApiService()
+
     private lateinit var token:String
     private lateinit var tileDiskCache: TileDiskCache
 
@@ -131,6 +134,9 @@ class ForestTaxationActivity : AppCompatActivity() {
     private var draggingPointId: Int? = null
     private var draggingPlacemark: PlacemarkMapObject? = null
 
+    val formatter = java.text.SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z",
+        java.util.Locale.ENGLISH)
+
     private val treesManagementLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -181,11 +187,6 @@ class ForestTaxationActivity : AppCompatActivity() {
         mapView.mapWindow.map.move(currentCameraPosition)
         mapView.mapWindow.map.set2DMode(true)
         mapObjects = mapView.mapWindow.map.mapObjects
-        mapObjects.addPlacemark().apply {
-            geometry = Point(57.907, 36.58)
-            setText("Мой маркер")
-            setUserData("custom_data") // Можно сохранить свои данные
-        }
         tempObjects = mapObjects.addCollection() // временные объекты (точки и линии при выборе)
         // Слушатель нажатий на карту
         mapView.mapWindow.map.addInputListener(mapInputListener)
@@ -210,10 +211,13 @@ class ForestTaxationActivity : AppCompatActivity() {
         planInfoImageButton.setOnClickListener {
             if(isInternetAvailable()){
                 if (selectedPlan != null) {
-                    val intent =  Intent(this,PlanInfoActivity::class.java)
+                    val dialog = PlanInfoDialogFragment(selectedPlan!!, planRepository, layerRepository)
+                    dialog.show(supportFragmentManager, "plan_info_dialog")
+
+/*                    val intent =  Intent(this,PlanInfoActivity::class.java)
                     val json = Gson().toJson(listOfPlanLayers)
                     intent.putExtra("listOfPlanLayers", json)
-                    startActivity(intent)
+                    startActivity(intent)*/
                 } else {
                     val message = Toast.makeText(this,"ГИС не выбран!",Toast.LENGTH_SHORT)
                     message.show()
@@ -226,7 +230,7 @@ class ForestTaxationActivity : AppCompatActivity() {
 
         val settingsImageButton = findViewById<ImageButton>(R.id.settingsImageButton)
         settingsImageButton.setOnClickListener {
-            val dialog = SettingsDialogFragment(token, layerRepository, planRepository, tableRepository, syncManager){
+            val dialog = SettingsDialogFragment(token, planList, layerRepository, planRepository, tableRepository, syncManager){
                 clearMapCollections()
                 DrawObjectsOnMap()
             }
@@ -239,35 +243,101 @@ class ForestTaxationActivity : AppCompatActivity() {
         }
 
         if(isInternetAvailable()){
-            val thread =Thread{
-                try {
-                    val gson = Gson()
-                    val mapAdapter = gson.getAdapter(object: TypeToken<Map<String, Any?>>() {})
+            val gson = Gson()
+            val mapAdapter = gson.getAdapter(object: TypeToken<Map<String, Any?>>() {})
+            try {
+                /*               val result: Map<String, Any?> = mapAdapter.fromJson(api.loadPlans(token))
+                               listOfPlans= result.get("plans") as MutableList<Map<String, Any?>>*/
+
+                val planFileEntities = mutableListOf<PlanFileEntity>()
+                val planEntities = mutableListOf<PlanEntity>()
+
+                lifecycleScope.launch(Dispatchers.IO) {
                     val result: Map<String, Any?> = mapAdapter.fromJson(api.loadPlans(token))
-                    listOfPlans= result.get("plans") as MutableList<Map<String, Any?>>
-                    if(listOfPlans.isNotEmpty())
-                    {
-                        for (plan in listOfPlans)
-                        {
-                            val planUUID = plan.get("uuid").toString()
-                            planList.add(Plan(plan.get("id").toString().toDouble().toInt(), planUUID, plan.get("name").toString(), plan.get("description").toString()))
-                            plansMap.put(planUUID, plan)
-                        }
-                    }
+                    val listOfPlans= result.get("plans") as MutableList<Map<String, Any?>>
+
+                    planEntities.addAll(listOfPlans.map { plan ->
+                        val createdAt = formatter.parse(plan["created_at"] as String)?.time ?: 0L
+                        val updatedAt = formatter.parse(plan["updated_at"] as String)?.time ?: 0L
+
+                        val files = plan["files"] as? List<Map<String, Any?>> ?: emptyList()
+                        planFileEntities.addAll(files.map { file ->
+
+                            PlanFileEntity(
+                                id = (file["id"] as Number).toInt(),
+
+                                gisObjectId = (file["gis_object_id"] as Number).toInt(),
+
+                                uuid = file["uuid"] as String,
+                                name = file["name"] as String,
+                                description = file["description"] as String?,
+
+                                originalFilename = file["original_filename"] as String?,
+                                fileInfoUploadFilename = file["file_info_upload_filename"] as String?,
+                                fileInfoSize = (file["file_info_size"] as? Number)?.toLong(),
+
+                                formatType = (file["format_type"] as Number).toInt(),
+                                statusType = (file["status_type"] as Number).toInt(),
+
+                                gisCategoryId = (file["gis_category_id"] as Number).toInt(),
+                                gisCategoryTypeId = (file["gis_category_type_id"] as? Number)?.toInt(),
+
+                                droneDeviceId = (file["drone_device_id"] as? Number)?.toInt(),
+                                droneName = file["drone_name"] as String?,
+                                errorDescription = file["error_description"] as String?,
+
+                                hasReducedFile = file["has_reduced_file"] as? Boolean,
+
+                                centerLat = (file["center_lat"] as? Number)?.toDouble(),
+                                centerLng = (file["center_lng"] as? Number)?.toDouble(),
+
+                                bound1Lat = (file["bound_1_lat"] as? Number)?.toDouble(),
+                                bound1Lng = (file["bound_1_lng"] as? Number)?.toDouble(),
+                                bound2Lat = (file["bound_2_lat"] as? Number)?.toDouble(),
+                                bound2Lng = (file["bound_2_lng"] as? Number)?.toDouble(),
+
+                                year = (file["year"] as? Number)?.toInt(),
+
+                                createdAt = createdAt,
+                                updatedAt = updatedAt
+                            )
+                        })
+
+                        planList.add(Plan(plan.get("id").toString().toDouble().toInt(), plan["uuid"] as String, plan.get("name").toString(), plan.get("description").toString()))
+                        plansMap.put(plan["uuid"].toString(), plan)
+
+                        PlanEntity(
+                            id = (plan["id"] as Number).toInt(),
+                            uuid = plan["uuid"] as String,
+                            name = plan["name"] as String,
+                            description = plan["description"] as String?,
+                            accessType = (plan["access_type"] as Number).toInt(),
+                            categoryId = (plan["category_id"] as? Number)?.toInt(),
+                            userId = (plan["user_id"] as Number).toInt(),
+                            isOwner = plan["is_owner"] as Boolean,
+                            canEdit = plan["can_edit"] as Boolean,
+                            accountIds = Gson().toJson(plan["account_ids"]),
+                            accounts = Gson().toJson(plan["accounts"]),
+                            createdAt = createdAt,
+                            updatedAt = updatedAt
+                        )
+                    })
+
+                    planRepository.insertAll(planEntities)
+                    planRepository.insertAllFiles(planFileEntities)
 
                 }
-                catch (exception: Exception)
-                {
-                    Log.d("Error","Unexpected code ${exception.message}")
-                    Handler(Looper.getMainLooper()).post{
-                        val message = Toast.makeText(this,"Unexpected code ${exception.message}",Toast.LENGTH_SHORT)
-                        message.show()
-                        val intent =  Intent(this,MapActivity::class.java)
-                        startActivity(intent)
-                    }
+            }
+            catch (exception: Exception)
+            {
+                Log.d("Error","Unexpected code ${exception.message}")
+                Handler(Looper.getMainLooper()).post{
+                    val message = Toast.makeText(this,"Unexpected code ${exception.message}",Toast.LENGTH_SHORT)
+                    message.show()
+                    val intent =  Intent(this,MapActivity::class.java)
+                    startActivity(intent)
                 }
             }
-            thread.start()
         }
         else{
             lifecycleScope.launch {
@@ -694,13 +764,16 @@ class ForestTaxationActivity : AppCompatActivity() {
                 lifecycleScope.launch {
                     if(selectedPlan != plan && selectedPlan != null){
                         val planUUID = selectedPlan!!.planUUID
-                        val currentLayers: List<Layer> = planLayersMap.get(planUUID)!!
-                        for(layer in currentLayers){
-                            if (layer.isValid == true) {
-                                layer.remove()
+
+                        val currentLayers: List<Layer>? = planLayersMap[planUUID]
+                        if (currentLayers != null) {
+                            for(layer in currentLayers){
+                                if (layer.isValid == true) {
+                                    layer.remove()
+                                }
                             }
+                            planLayersMap.remove(planUUID)
                         }
-                        planLayersMap.remove(planUUID)
                     }
                     selectedPlan = plan
 
@@ -813,6 +886,8 @@ class ForestTaxationActivity : AppCompatActivity() {
         cluster.addClusterTapListener(clusterTapListener)
     }
 
+
+
     fun DrawObjectsOnMap()
     {
         runOnUiThread{
@@ -823,7 +898,6 @@ class ForestTaxationActivity : AppCompatActivity() {
                     val plan = planRepository.getPlanData(selectedPlan!!.plainId)
                     if(plan == null)
                         return@launch
-
                     plan.layers.forEach {layer->
                         var colorInt =  Color.parseColor("#FFA500")
                         if(layer.color != null)

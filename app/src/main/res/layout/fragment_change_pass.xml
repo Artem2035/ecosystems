@@ -61,12 +61,12 @@
                 android:layout_margin="8dp"
                 android:layout_marginTop="5dp"
                 android:background="@color/black"
-                app:layout_constraintBottom_toTopOf="@+id/backButton2"
+                app:layout_constraintBottom_toTopOf="@+id/planInfoBackButton"
                 app:layout_constraintTop_toTopOf="parent"
                 tools:layout_editor_absoluteX="-24dp" />
 
             <androidx.appcompat.widget.AppCompatButton
-                android:id="@+id/backButton2"
+                android:id="@+id/planInfoBackButton"
                 android:layout_width="wrap_content"
                 android:layout_height="48dp"
                 android:layout_marginStart="16dp"

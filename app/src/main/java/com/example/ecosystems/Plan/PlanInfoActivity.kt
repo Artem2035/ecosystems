@@ -41,7 +41,7 @@ class PlanInfoActivity : AppCompatActivity() {
         text = "Точка1: (${gisFile.get("bound_1_lng")}, ${gisFile.get("bound_1_lat")}), \n Точка2: (${gisFile.get("bound_2_lng")}, ${gisFile.get("bound_2_lat")})"
         bordersTextView.setText(text)
 
-        val backButton: AppCompatButton = findViewById(R.id.backButton2)
+        val backButton: AppCompatButton = findViewById(R.id.planInfoBackButton)
         // Кнопка для активации режима выбора
         backButton.setOnClickListener {
             val intent =  Intent(this,ForestTaxationActivity::class.java)

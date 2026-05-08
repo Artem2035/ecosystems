@@ -1,7 +1,6 @@
 package com.example.ecosystems.utils
 
 import android.content.Context
-import android.util.Log
 import com.example.ecosystems.network.BASE_URL
 import com.yandex.mapkit.RawTile
 import com.yandex.mapkit.TileId
@@ -24,13 +23,13 @@ class OsmTileProvider(private val tileFileName: String,
         val x = tileId.x
         val y = tileId.y
 
-        val cached = diskCache.read(tileFileName, z, x, y)
+/*        val cached = diskCache.read(tileFileName, z, x, y)
         if (cached != null) {
             Log.d("OsmTile", "HIT disk: $tileFileName/$z/$x/$y")
             // Тайл есть на диске — отдаём без сетевого запроса.
             // UseCache.YES говорит Yandex Maps тоже закэшировать в своём слое.
             return RawTile(version, features, etag, RawTile.UseCache.YES, RawTile.State.OK, cached)
-        }
+        }*/
 
         if (!context.isInternetAvailable()) {
             // Возвращаем пустой тайл без ошибки — карта просто покажет пустую плитку
@@ -62,7 +61,7 @@ class OsmTileProvider(private val tileFileName: String,
                     val newEtag = connection.getHeaderField("ETag") ?: etag
 
                     // Сохраняем на диск — следующий запрос пойдёт из кэша
-                    diskCache.write(tileFileName, z, x, y, bytes)
+                    //diskCache.write(tileFileName, z, x, y, bytes)
 
                     RawTile(
                         version,

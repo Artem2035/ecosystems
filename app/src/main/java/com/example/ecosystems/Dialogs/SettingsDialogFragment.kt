@@ -2,23 +2,25 @@ package com.example.ecosystems.SettingsDialogFragment
 
 import android.app.Dialog
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.util.Log
+import android.view.ViewGroup
 import android.widget.Button
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.DialogFragment
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.example.ecosystems.DataClasses.Plan
+import com.example.ecosystems.DataClasses.PlanDownloadItem
 import com.example.ecosystems.Dialogs.ProgressDialogFragment
+import com.example.ecosystems.Plan.PlanDownloadAdapter
 import com.example.ecosystems.R
 import com.example.ecosystems.db.dto.TableDto
 import com.example.ecosystems.db.dto.layer.LayerImageDto
 import com.example.ecosystems.db.dto.layer.LayerPointDto
 import com.example.ecosystems.db.dto.layer.toEntity
 import com.example.ecosystems.db.dto.toEntity
-import com.example.ecosystems.db.entity.PlanEntity
-import com.example.ecosystems.db.entity.PlanFileEntity
 import com.example.ecosystems.db.entity.layer.LayerEntity
 import com.example.ecosystems.db.entity.layer.LayerImageEntity
 import com.example.ecosystems.db.entity.layer.LayerPointEntity
@@ -37,14 +39,22 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.Locale
 
 class SettingsDialogFragment(private val token:String,
+                             private val planList: MutableList<Plan>,
                              private var layerRepository: LayerRepository,
                              private var planRepository: PlanRepository,
                              private var tableRepository: TableRepository,
                              private val syncManager: SyncManager,
                              private val onSyncComplete: (() -> Unit)? = null) : DialogFragment() {
     private val api: ApiService = ApiService()
+    // Список для адаптера
+    private val planItems = mutableListOf<PlanDownloadItem>()
+    private var tempPlanItems = mutableListOf<PlanDownloadItem>()
+
+    private lateinit var adapter: PlanDownloadAdapter
+
     private var progressDialog: ProgressDialogFragment? = null
     private lateinit var syncButton: Button
 
@@ -55,11 +65,47 @@ class SettingsDialogFragment(private val token:String,
         val view = requireActivity().layoutInflater
             .inflate(R.layout.dialog_settings, null)
 
-        val button = view.findViewById<Button>(R.id.downloadButton)
         val backButton = view.findViewById<Button>(R.id.backButton)
         syncButton = view.findViewById(R.id.syncButton)
 
-        val dialog = AlertDialog.Builder(requireContext())
+        val recyclerView = view.findViewById<RecyclerView>(R.id.plansRecyclerView)
+
+        adapter = PlanDownloadAdapter(tempPlanItems) { item, position ->
+            downloadSinglePlan(item, position)
+        }
+        recyclerView.layoutManager = LinearLayoutManager(requireContext())
+        recyclerView.adapter = adapter
+
+        //поиск
+        val searchView = view.findViewById<androidx.appcompat.widget.SearchView>(R.id.searchView)
+        searchView.setOnQueryTextListener(object : androidx.appcompat.widget.SearchView.OnQueryTextListener{
+            override fun onQueryTextSubmit(query: String?): Boolean {
+                return false
+            }
+
+            override fun onQueryTextChange(newText: String?): Boolean {
+                tempPlanItems.clear()
+                val searchText = newText!!.lowercase(Locale.getDefault())
+                if(!searchText.isEmpty()){
+
+                    planItems.forEach {
+                        if(it.plan.name.lowercase(Locale.getDefault()).contains(searchText) ||
+                            it.plan.description.lowercase(Locale.getDefault()).contains(searchText)){
+                            tempPlanItems.add(it)
+                        }
+                    }
+
+                    adapter.notifyDataSetChanged()
+                }else{
+                    tempPlanItems.clear()
+                    tempPlanItems.addAll(planItems)
+                    adapter.notifyDataSetChanged()
+                }
+                return false
+            }
+        })
+
+        val dialog = AlertDialog.Builder(requireContext(), android.R.style.Theme_Material_Light_NoActionBar)
             .setView(view)
             .create()
 
@@ -71,114 +117,73 @@ class SettingsDialogFragment(private val token:String,
             startSync()
         }
 
-        button.setOnClickListener {
+/*        button.setOnClickListener {
             Log.d("SettingsDialogFragment", "SettingsDialogFragment")
             if (!requireContext().isInternetAvailable()) {
                 Toast.makeText(requireContext(), "Нет доступа к интернету!", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
-            showDownloadConfirmation()
-        }
+            //showDownloadConfirmation()
+        }*/
+
         backButton.setOnClickListener {
             dismiss()
         }
 
+        Log.d("plan down","${planList}")
+        buildPlanItems()
+
         return dialog
     }
 
-    private fun startDownloading(){
-        val gson = Gson()
-        val mapAdapter = gson.getAdapter(object: TypeToken<Map<String, Any?>>() {})
-        try {
-            clearLocalData()
-            loadTables()
-
-            progressDialog = ProgressDialogFragment()
-            progressDialog?.show(parentFragmentManager, "progress")
-
-            val planFileEntities = mutableListOf<PlanFileEntity>()
-            val planEntities = mutableListOf<PlanEntity>()
-
-            lifecycleScope.launch(Dispatchers.IO) {
-                var result: Map<String, Any?> = mapAdapter.fromJson(api.loadPlans(token))
-                val listOfPlans= result.get("plans") as MutableList<Map<String, Any?>>
-
-                planEntities.addAll(listOfPlans.map { plan ->
-                    val createdAt = formatter.parse(plan["created_at"] as String)?.time ?: 0L
-                    val updatedAt = formatter.parse(plan["updated_at"] as String)?.time ?: 0L
-
-                    val files = plan["files"] as? List<Map<String, Any?>> ?: emptyList()
-                    planFileEntities.addAll(files.map { file ->
-
-                        PlanFileEntity(
-                            id = (file["id"] as Number).toInt(),
-
-                            gisObjectId = (file["gis_object_id"] as Number).toInt(),
-
-                            uuid = file["uuid"] as String,
-                            name = file["name"] as String,
-                            description = file["description"] as String?,
-
-                            originalFilename = file["original_filename"] as String?,
-                            fileInfoUploadFilename = file["file_info_upload_filename"] as String?,
-                            fileInfoSize = (file["file_info_size"] as? Number)?.toLong(),
-
-                            formatType = (file["format_type"] as Number).toInt(),
-                            statusType = (file["status_type"] as Number).toInt(),
-
-                            gisCategoryId = (file["gis_category_id"] as Number).toInt(),
-                            gisCategoryTypeId = (file["gis_category_type_id"] as? Number)?.toInt(),
-
-                            droneDeviceId = (file["drone_device_id"] as? Number)?.toInt(),
-                            droneName = file["drone_name"] as String?,
-                            errorDescription = file["error_description"] as String?,
-
-                            hasReducedFile = file["has_reduced_file"] as? Boolean,
-
-                            centerLat = (file["center_lat"] as? Number)?.toDouble(),
-                            centerLng = (file["center_lng"] as? Number)?.toDouble(),
-
-                            bound1Lat = (file["bound_1_lat"] as? Number)?.toDouble(),
-                            bound1Lng = (file["bound_1_lng"] as? Number)?.toDouble(),
-                            bound2Lat = (file["bound_2_lat"] as? Number)?.toDouble(),
-                            bound2Lng = (file["bound_2_lng"] as? Number)?.toDouble(),
-
-                            year = (file["year"] as? Number)?.toInt(),
-
-                            createdAt = createdAt,
-                            updatedAt = updatedAt
-                        )
-                    })
-
-                    PlanEntity(
-                        id = (plan["id"] as Number).toInt(),
-                        uuid = plan["uuid"] as String,
-                        name = plan["name"] as String,
-                        description = plan["description"] as String?,
-                        accessType = (plan["access_type"] as Number).toInt(),
-                        categoryId = (plan["category_id"] as? Number)?.toInt(),
-                        userId = (plan["user_id"] as Number).toInt(),
-                        isOwner = plan["is_owner"] as Boolean,
-                        canEdit = plan["can_edit"] as Boolean,
-                        accountIds = Gson().toJson(plan["account_ids"]),
-                        accounts = Gson().toJson(plan["accounts"]),
-                        createdAt = createdAt,
-                        updatedAt = updatedAt
+    private fun buildPlanItems() {
+        lifecycleScope.launch {
+            val items = withContext(Dispatchers.IO) {
+                planList.map { plan ->
+                    PlanDownloadItem(
+                        plan        = plan,
+                        isDownloaded = planRepository.hasPlanData(plan.plainId)
                     )
-                })
-
-                planRepository.insertAll(planEntities)
-                planRepository.insertAllFiles(planFileEntities)
-
-                loadPlanLayers(planEntities)
+                }
             }
+            planItems.clear()
+            planItems.addAll(items)
+            tempPlanItems.addAll(items)
+            adapter.notifyDataSetChanged()
         }
-        catch (exception: Exception)
-        {
-            Log.d("Error","Unexpected code ${exception.message}")
-            Handler(Looper.getMainLooper()).post{
-                val message = Toast.makeText(requireContext(),"Unexpected code ${exception.message}",Toast.LENGTH_SHORT)
-                message.show()
+    }
+
+    private fun downloadSinglePlan(item: PlanDownloadItem, position: Int){
+        Log.d("plan down","${item} ${position}")
+        item.isLoading = true
+        adapter.notifyItemChanged(position)
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                loadTables()
+                loadPlanLayers(item.plan)
+
+                withContext(Dispatchers.Main) {
+                    item.isLoading    = false
+                    item.isDownloaded = true
+                    adapter.notifyItemChanged(position)
+                    Toast.makeText(
+                        requireContext(),
+                        "«${item.plan.name}» скачан",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            } catch (e: Exception) {
+                Log.e("Settings", "Ошибка скачивания плана ${item.plan.name}", e)
+                withContext(Dispatchers.Main) {
+                    item.isLoading = false
+                    adapter.notifyItemChanged(position)
+                    Toast.makeText(
+                        requireContext(),
+                        "Ошибка: ${e.message}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
             }
         }
     }
@@ -285,131 +290,117 @@ class SettingsDialogFragment(private val token:String,
         }
     }
 
-    private fun loadPlanLayers(planEntities: List<PlanEntity>){
-        val max = planEntities.size
+    private fun loadPlanLayers(plan: Plan){
         val gson = Gson()
-        Log.d("status down", "размер = ${max}")
-        var count = 0
         lifecycleScope.launch(Dispatchers.IO) {
-            planEntities.forEach {plan->
-                ensureActive()
+            ensureActive()
 
-                api.loadPlanLayersRaw(token, plan.uuid).use { body ->
-                    val pointsEntities = mutableListOf<LayerPointEntity>()
-                    val imagesEntities = mutableListOf<LayerImageEntity>()
-                    val layerEntities = mutableListOf<LayerEntity>()
+            api.loadPlanLayersRaw(token, plan.planUUID).use { body ->
+                val pointsEntities = mutableListOf<LayerPointEntity>()
+                val imagesEntities = mutableListOf<LayerImageEntity>()
+                val layerEntities = mutableListOf<LayerEntity>()
 
-                    val pointValuesEntities = mutableListOf<PointValueEntity>()
-                    // JsonReader читает токен за токеном без загрузки всего JSON
-                    val reader = com.google.gson.stream.JsonReader(body.charStream())
+                val pointValuesEntities = mutableListOf<PointValueEntity>()
+                // JsonReader читает токен за токеном без загрузки всего JSON
+                val reader = com.google.gson.stream.JsonReader(body.charStream())
 
-                    reader.beginObject()
-                    while (reader.hasNext()) {
-                        when (reader.nextName()) {
-                            "layers" -> {
-                                reader.beginArray()
-                                while (reader.hasNext()) {
-                                    // Читаем один layer как Map — только один объект в RAM
-                                    val layer = gson.fromJson<Map<String, Any?>>(
-                                        reader,
-                                        object : TypeToken<Map<String, Any?>>() {}.type
-                                    )
+                reader.beginObject()
+                while (reader.hasNext()) {
+                    when (reader.nextName()) {
+                        "layers" -> {
+                            reader.beginArray()
+                            while (reader.hasNext()) {
+                                // Читаем один layer как Map — только один объект в RAM
+                                val layer = gson.fromJson<Map<String, Any?>>(
+                                    reader,
+                                    object : TypeToken<Map<String, Any?>>() {}.type
+                                )
 
-                                    val json = layer["data"] as? Map<String, Any?> ?: emptyMap()
-                                    val dataJson = json
-                                        .filterKeys { it !in setOf("images", "points", "shape_objects", "shooting_objects", "projective_coverage") }
-                                        .mapValues { (_, v) ->
-                                            if (v is Map<*, *> || v is List<*>) gson.toJson(v) else v
-                                        }
-
-                                    val tableId = when (val value = layer["table_id"]) {
-                                        is Double -> {
-                                            val t = value.toInt()
-                                            if(t == 0)
-                                                null
-                                            else
-                                                t
-                                        }
-                                        is String -> value.toIntOrNull()
-                                        else -> null
+                                val json = layer["data"] as? Map<String, Any?> ?: emptyMap()
+                                val dataJson = json
+                                    .filterKeys { it !in setOf("images", "points", "shape_objects", "shooting_objects", "projective_coverage") }
+                                    .mapValues { (_, v) ->
+                                        if (v is Map<*, *> || v is List<*>) gson.toJson(v) else v
                                     }
 
-                                    val layerEnt = LayerEntity(
-                                        id = layer["id"].toString().toDouble().toInt(),
-                                        uuid = layer["uuid"] as String,
-                                        gisObjectId = layer["gis_object_id"].toString().toDouble().toInt(),
-                                        gisObjectFileId = layer["gis_object_file_id"].toString().toDoubleOrNull()?.toInt(),
-                                        name = layer["name"] as String,
-                                        color = layer["color"] as? String,
-                                        type = layer["type"] as String,
-                                        order = layer["order"].toString().toIntOrNull(),
-                                        parentId = layer["parent_id"].toString().toIntOrNull(),
-                                        tableId = tableId,
-                                        createdAt = formatter.parse(layer["created_at"] as String)?.time ?: 0L,
-                                        updatedAt = formatter.parse(layer["updated_at"] as String)?.time ?: 0L,
-                                        dataJson = gson.toJson(dataJson),
-                                        cropEnabled = layer["crop_enabled"] as Boolean,
-                                        cropPercent = (layer["crop_percent"] as Number).toDouble(),
-                                        syncedAt = System.currentTimeMillis()
-                                    )
-
-                                    when (layerEnt.type) {
-                                        "points" -> {
-                                            val points = gson.fromJson<List<LayerPointDto>>(
-                                                gson.toJson(json["points"]),
-                                                object : TypeToken<List<LayerPointDto>>() {}.type
-                                            ) ?: emptyList()
-
-                                            points.mapTo(pointsEntities) { point->
-                                                val values = point.values
-                                                if (!values.isNullOrEmpty() && layerEnt.tableId != null) {
-                                                    values.mapTo(pointValuesEntities){ value ->
-                                                        PointValueEntity(
-                                                            point.id,
-                                                            tableRepository.getTablePropertyIdByName(
-                                                                layerEnt.tableId, value.key),
-                                                            value.value.toString()
-                                                        )
-                                                    }
-                                                }
-                                                point.toEntity()
-                                            }
-                                        }
-                                        "library_images" -> {
-                                            val images = gson.fromJson<List<LayerImageDto>>(
-                                                gson.toJson(json["images"]),
-                                                object : TypeToken<List<LayerImageDto>>() {}.type
-                                            ) ?: emptyList()
-
-                                            images.mapTo(imagesEntities) { it.toEntity() }
-                                        }
+                                val tableId = when (val value = layer["table_id"]) {
+                                    is Double -> {
+                                        val t = value.toInt()
+                                        if(t == 0)
+                                            null
+                                        else
+                                            t
                                     }
-                                    layerEntities.add(layerEnt)
+                                    is String -> value.toIntOrNull()
+                                    else -> null
                                 }
-                                reader.endArray()
+
+                                val layerEnt = LayerEntity(
+                                    id = layer["id"].toString().toDouble().toInt(),
+                                    uuid = layer["uuid"] as String,
+                                    gisObjectId = layer["gis_object_id"].toString().toDouble().toInt(),
+                                    gisObjectFileId = layer["gis_object_file_id"].toString().toDoubleOrNull()?.toInt(),
+                                    name = layer["name"] as String,
+                                    color = layer["color"] as? String,
+                                    type = layer["type"] as String,
+                                    order = layer["order"].toString().toIntOrNull(),
+                                    parentId = layer["parent_id"].toString().toIntOrNull(),
+                                    tableId = tableId,
+                                    createdAt = formatter.parse(layer["created_at"] as String)?.time ?: 0L,
+                                    updatedAt = formatter.parse(layer["updated_at"] as String)?.time ?: 0L,
+                                    dataJson = gson.toJson(dataJson),
+                                    cropEnabled = layer["crop_enabled"] as Boolean,
+                                    cropPercent = (layer["crop_percent"] as Number).toDouble(),
+                                    syncedAt = System.currentTimeMillis()
+                                )
+
+                                when (layerEnt.type) {
+                                    "points" -> {
+                                        val points = gson.fromJson<List<LayerPointDto>>(
+                                            gson.toJson(json["points"]),
+                                            object : TypeToken<List<LayerPointDto>>() {}.type
+                                        ) ?: emptyList()
+
+                                        points.mapTo(pointsEntities) { point->
+                                            val values = point.values
+                                            if (!values.isNullOrEmpty() && layerEnt.tableId != null) {
+                                                values.mapTo(pointValuesEntities){ value ->
+                                                    PointValueEntity(
+                                                        point.id,
+                                                        tableRepository.getTablePropertyIdByName(
+                                                            layerEnt.tableId, value.key),
+                                                        value.value.toString()
+                                                    )
+                                                }
+                                            }
+                                            point.toEntity()
+                                        }
+                                    }
+                                    "library_images" -> {
+                                        val images = gson.fromJson<List<LayerImageDto>>(
+                                            gson.toJson(json["images"]),
+                                            object : TypeToken<List<LayerImageDto>>() {}.type
+                                        ) ?: emptyList()
+
+                                        images.mapTo(imagesEntities) { it.toEntity() }
+                                    }
+                                }
+                                layerEntities.add(layerEnt)
                             }
-                            else -> reader.skipValue()
+                            reader.endArray()
                         }
+                        else -> reader.skipValue()
                     }
-                    reader.endObject()
-
-                    layerRepository.insertAllData(layerEntities, pointsEntities, imagesEntities, pointValuesEntities)
-                    count += 1
-                    withContext(Dispatchers.Main) {
-                        progressDialog?.updateProgress(count, max)
-                    }
-                    Log.d("status down", "скачано ${count} из ${planEntities.size}")
                 }
-            }
+                reader.endObject()
 
-            progressDialog?.dismiss()
-            Handler(Looper.getMainLooper()).post{
-                val message = Toast.makeText(requireContext(),"Данные скачаны!",Toast.LENGTH_SHORT)
-                message.show()
-                onSyncComplete?.invoke()
+                layerRepository.insertAllData(layerEntities, pointsEntities, imagesEntities, pointValuesEntities)
+
+                Log.d("status down", "скачано для ${plan}")
             }
         }
     }
+
     //очистить планы перед загрузкой с сервера
     private fun clearLocalData() {
         lifecycleScope.launch(Dispatchers.IO){
@@ -423,9 +414,17 @@ class SettingsDialogFragment(private val token:String,
             .setTitle("Скачивание данных")
             .setMessage("Скачивание данных приведёт к удалению несинхронизированных данных. Продолжить?")
             .setPositiveButton("Продолжить") { _, _ ->
-                startDownloading()
+                //startDownloading()
             }
             .setNegativeButton("Отмена", null)
             .show()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        dialog?.window?.setLayout(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.MATCH_PARENT
+        )
     }
 }
