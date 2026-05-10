@@ -90,7 +90,6 @@ class ForestTaxationActivity : AppCompatActivity() {
         17f, 0.0f, 0.0f)
 
     /*список кластеризуемых коллекции точек, слои типа libraryImages*/
-    //private var libraryImagesCollectionList: MutableList<ClusterizedPlacemarkCollection> = mutableListOf()
     /*map кластеризуемых коллекции слоя типа library_images, где ключ - id слоя, к которому коллекция относится*/
     private var libraryImagesCollectionMap: MutableMap<Int, ClusterizedPlacemarkCollection> = mutableMapOf()
     /*список ClusterListener для кластеризуемых коллекции точек*/
@@ -182,8 +181,6 @@ class ForestTaxationActivity : AppCompatActivity() {
             tableRepository =  tableRepository,
             planRepository = planRepository,
             syncQueueDao = syncQueueDao,
-            layerDao = layerDao,
-            planDao= planDao,
             api = api,
             token = token
         )
@@ -728,7 +725,6 @@ class ForestTaxationActivity : AppCompatActivity() {
                         pointsCollectionMap.clear()
                         pointsClusterListenerList.clear()
                         planLibraryImagesMap.clear()
-                        //libraryImagesCollectionList.clear()
                         libraryImagesCollectionMap.clear()
                         libraryImagesClusterListenerList.clear()
                         for(layer in listOfPlanLayers){
@@ -815,7 +811,6 @@ class ForestTaxationActivity : AppCompatActivity() {
                     pointsCollectionMap.clear()
                     pointsClusterListenerList.clear()
                     planLibraryImagesMap.clear()
-                    //libraryImagesCollectionList.clear()
                     libraryImagesCollectionMap.clear()
                     libraryImagesClusterListenerList.clear()
                     Log.d("DrawObjectsOnMap", "DrawObjectsOnMap")
@@ -954,7 +949,6 @@ class ForestTaxationActivity : AppCompatActivity() {
                                     }
                                 }
                                 libraryImagesClusterListenerList.add(tempPointsClusterListener)
-                                //libraryImagesCollectionList.add(tempPointsCollection)
                                 libraryImagesCollectionMap[layer.id] = tempPointsCollection
                                 layersVisibility[layer.id] = true
                             }
@@ -966,9 +960,6 @@ class ForestTaxationActivity : AppCompatActivity() {
                     libraryImagesCollectionMap.values.forEach {
                         it.clusterPlacemarks(50.0, 17)
                     }
-/*                    libraryImagesCollectionList.forEach {
-                        it.clusterPlacemarks(50.0, 17)
-                    }*/
                 }
             }
         }
@@ -983,7 +974,6 @@ class ForestTaxationActivity : AppCompatActivity() {
         pointsCollectionMap.clear()
         pointsClusterListenerList.clear()
         planLibraryImagesMap.clear()
-        //libraryImagesCollectionList.clear()
         libraryImagesCollectionMap.clear()
         libraryImagesClusterListenerList.clear()
     }

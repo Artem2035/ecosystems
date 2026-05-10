@@ -1,6 +1,5 @@
 package com.example.ecosystems.db.repository
 
-import android.util.Log
 import com.example.ecosystems.db.dao.LayerEntityDao
 import com.example.ecosystems.db.dao.SyncQueueDao
 import com.example.ecosystems.db.entity.layer.LayerEntity
@@ -16,6 +15,8 @@ class LayerRepository(private val layerDao: LayerEntityDao,
                       private val syncQueueDao: SyncQueueDao) {
 
     fun getAllLayers() = layerDao.getAll()
+
+    suspend fun setPointServerId(localId: Int, serverId: Int) = layerDao.setPointServerId(localId, serverId)
 
     //обновление координат точки
     suspend fun updatePointCoordinates(pointId: Int, lat: Double, lng: Double) {
@@ -62,7 +63,7 @@ class LayerRepository(private val layerDao: LayerEntityDao,
     suspend fun insertLayers(layers: List<LayerEntity>) {
         layerDao.insertLayers(layers)
     }
-    suspend fun insertAllPoints(points: List<LayerPointEntity>) {
+    suspend fun insertPoints(points: List<LayerPointEntity>) {
         layerDao.insertPoints(points)
     }
     suspend fun insertAllImages(images: List<LayerImageEntity>) {
@@ -95,6 +96,12 @@ class LayerRepository(private val layerDao: LayerEntityDao,
         layerDao.insertAllData(layers, points, images, pointsValues)
     }
 
+    suspend fun deletePlanLayers(planId: Int){
+        layerDao.deletePlanLayers(planId)
+        syncQueueDao.deleteAll()
+    }
+
+    suspend fun deletePointsByLayerId(layerId: Int) = layerDao.deletePointsByLayerId(layerId)
     //удалить точку с pointId
     suspend fun deletePoint(pointId: Int) {
         // Если точка никогда не была на сервере — просто чистим всю очередь по ней
@@ -123,29 +130,6 @@ class LayerRepository(private val layerDao: LayerEntityDao,
         }
         layerDao.deletePoint(pointId)
     }
-    //удалить незаполненное значение точки
-    /*suspend fun deletePointValue(pointId: Int, propertyId: Int) {
-        val point = layerDao.getPointById(pointId) ?: return
-        layerDao.deletePointValue(pointId, propertyId)
-
-        val isLocalPoint = syncQueueDao.hasCreate(SyncEntityType.POINT, pointId)
-        if (isLocalPoint || point.serverId == null) {
-            // Точка локальная — CREATE заберёт актуальное состояние без этого значения
-            refreshValuesJson(point.id)
-            return
-        }
-
-        // Значения изменились — ставим UPDATE точки целиком
-        // дедуплицируем: если уже есть UPDATE точки — заменяем
-        syncQueueDao.removePendingUpdate(SyncEntityType.POINT, point.id)
-        syncQueueDao.enqueue(
-            SyncQueueEntity(
-                entityType = SyncEntityType.POINT,
-                entityId = point.id,
-                operation = SyncOperation.UPDATE
-            )
-        )
-    }*/
 
     suspend fun deletePointValues(pointId: Int, propertyIds: List<Int>) {
 
@@ -174,12 +158,9 @@ class LayerRepository(private val layerDao: LayerEntityDao,
     //сохранить все значения точки (используется в PointDataDialogFragment)
     suspend fun savePointValues(values: List<PointValueEntity>) {
         if (values.isEmpty()) return
-
         val point = layerDao.getPointById(values[0].pointId) ?: return
 
-        Log.d("savePointValues", "$point")
         val isLocalPoint = syncQueueDao.hasCreate(SyncEntityType.POINT, point.id)
-        Log.d("savePointValues", "лок $isLocalPoint")
         if (isLocalPoint || point.serverId == null) {
             // CREATE точки заберёт актуальные значения из Room
             refreshValuesJson(point.id)
@@ -197,6 +178,12 @@ class LayerRepository(private val layerDao: LayerEntityDao,
             )
         )
     }
+
+    suspend fun savePointValuesFromServer(values: List<PointValueEntity>) = layerDao.savePointValues(values)
+
+    fun getPointById(pointId: Int) = layerDao.getPointById(pointId)
+
+    fun getLayerUUIDById(layerId: Int) = layerDao.getLayerUUIDById(layerId)
 
     suspend fun getLayersByPlanId(planId: Int) = layerDao.getLayersByPlanId(planId)
 

@@ -12,8 +12,8 @@ import java.util.Date
     foreignKeys = [ForeignKey(
         entity = LayerEntity::class,
         parentColumns = ["id"],        // LayerEntity.id
-        childColumns = ["layerId"],  // ImageEntity.gisObjectLayerId
-        onDelete = ForeignKey.CASCADE, // удалятся все images
+        childColumns = ["layerId"],
+        onDelete = ForeignKey.CASCADE, // удалятся все
         onUpdate = ForeignKey.CASCADE  // обновить id  везде
     )],)
 data class LayerPointEntity(

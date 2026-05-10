@@ -2,7 +2,6 @@ package com.example.ecosystems.db.entity.syncQueue.synchronizers
 
 import android.util.Log
 import com.example.ecosystems.DataClasses.CreatePointRequest
-import com.example.ecosystems.db.dao.LayerEntityDao
 import com.example.ecosystems.db.entity.layer.toCreateRequest
 import com.example.ecosystems.db.entity.layer.toUpdateRequest
 import com.example.ecosystems.db.entity.syncQueue.EntitySyncer
@@ -16,11 +15,10 @@ import com.google.gson.Gson
 import kotlinx.coroutines.flow.firstOrNull
 
 class PointSyncer(
-    private val layerDao: LayerEntityDao,
+    private val layerRepository: LayerRepository,
     private val planRepository: PlanRepository,
     private val api: ApiService,
-    private val token: String,
-    private val layerRepository: LayerRepository
+    private val token: String
 ) : EntitySyncer {
 
     // Накапливаем layerId, которые изменились в этой сессии синхронизации
@@ -47,12 +45,13 @@ class PointSyncer(
         val bundles = mutableListOf<PointBundle>()
 
         for (item in items) {
-            val point = layerDao.getPointById(item.entityId)
+            val point = layerRepository.getPointById(item.entityId)
             if (point == null) {
                 results[item.entityId] = true // точки нет — пропускаем
                 continue
             }
-            val layer = layerDao.getLayerUUIDById(point.layerId)
+
+            val layer = layerRepository.getLayerUUIDById(point.layerId)
 
             // Получаем uuid плана через gisObjectId слоя
             val planUUID = planRepository.getPlanUuidById(layer.gisObjectId)
@@ -63,7 +62,7 @@ class PointSyncer(
             }
 
             // Собираем значения точки для отправки
-            val pointValues = layerDao.getPointWithValuesByPointId(point.id)?.firstOrNull()
+            val pointValues = layerRepository.getPointWithValuesByPointId(point.id)?.firstOrNull()
             val valuesMap: Map<String, Any?> = pointValues
                 ?.firstOrNull()
                 ?.values
@@ -106,9 +105,9 @@ class PointSyncer(
         Log.d("Sync","${item}")
         return when (item.operation) {
             SyncOperation.CREATE -> {
-                val point = layerDao.getPointById(item.entityId) ?: return false
-                val layer = layerDao.getLayerUUIDById(point.layerId)
-                val pointValues = layerDao.getPointWithValuesByPointId(point.id)?.firstOrNull()
+                val point = layerRepository.getPointById(item.entityId) ?: return false
+                val layer = layerRepository.getLayerUUIDById(point.layerId)
+                val pointValues = layerRepository.getPointWithValuesByPointId(point.id)?.firstOrNull()
                 val pointValuesMap: Map<String, Any?> = pointValues?.firstOrNull()
                         ?.values
                         ?.associate { pv ->
@@ -116,14 +115,15 @@ class PointSyncer(
                         }
                         ?: emptyMap()
                 val serverId = api.saveNewPoint(token, point.toCreateRequest(layer.uuid, pointValuesMap)) // POST
-                layerDao.setPointServerId(item.entityId, serverId)
+
+                layerRepository.setPointServerId(item.entityId, serverId)
                 layerRepository.refreshValuesJson(point.id)
                 return true
             }
             SyncOperation.UPDATE -> {
-                val point = layerDao.getPointById(item.entityId) ?: return false
-                val layer = layerDao.getLayerUUIDById(point.layerId)
-                val pointValues = layerDao.getPointWithValuesByPointId(point.id)?.firstOrNull()
+                val point = layerRepository.getPointById(item.entityId) ?: return false
+                val layer = layerRepository.getLayerUUIDById(point.layerId)
+                val pointValues = layerRepository.getPointWithValuesByPointId(point.id)?.firstOrNull()
                 val pointValuesMap: Map<String, Any?> = pointValues?.firstOrNull()
                     ?.values
                     ?.associate { pv ->

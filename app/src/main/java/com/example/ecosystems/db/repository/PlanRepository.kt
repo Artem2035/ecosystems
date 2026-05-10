@@ -16,8 +16,6 @@ class PlanRepository(private val planEntityDao: PlanEntityDao) {
         planEntityDao.insertAllFiles(planFiles)
     }
 
-    fun getAllPlansWithData() = planEntityDao.getAllPlansWithData()
-
     suspend fun getPlanById(planId: Int) = planEntityDao.getPlanById(planId)
 
     suspend fun getPlanUuidById(planId: Int) =  planEntityDao.getPlanUuidById(planId)
@@ -27,6 +25,7 @@ class PlanRepository(private val planEntityDao: PlanEntityDao) {
     suspend fun getPlanFiles(planId: Int) = planEntityDao.getPlanFiles(planId)
 
     suspend fun deleteAll() = planEntityDao.deleteAll()
+    suspend fun deletePlan(planId: Int) = planEntityDao.deletePlan(planId)
     
     suspend fun hasPlanData(planId: Int): Boolean = planEntityDao.countLayersByPlanId(planId) > 0
 }

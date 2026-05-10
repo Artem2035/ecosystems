@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
+import androidx.room.Update
 import com.example.ecosystems.db.entity.table.TableEntity
 import com.example.ecosystems.db.entity.table.TablePropertyEntity
 import com.example.ecosystems.db.relation.TableWithProperties
@@ -55,4 +56,30 @@ interface TableEntityDao {
     @Transaction
     @Query("SELECT id FROM table_properties WHERE tableId = :tableId and  name = :propertyName")
     suspend fun getTablePropertyIdByName(tableId: Int, propertyName: String): Int
+
+    // вставить новые таблицы, пропустить, если уже существует
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertTablesIgnore(tables: List<TableEntity>)
+    //обновить существующие таблицы
+    @Update
+    suspend fun updateTables(tables: List<TableEntity>)
+    // вставить новые параметры таблицы, пропустить, если уже существуют
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertTablePropertiesIgnore(properties: List<TablePropertyEntity>)
+    //обновить существующие параметры таблицы
+    @Update
+    suspend fun updateTableProperties(properties: List<TablePropertyEntity>)
+
+    // Upsert вручную — сначала пробуем обновить,
+    // потом вставляем только те что ещё не существуют
+    @Transaction
+    suspend fun upsertTablesWithProperties(
+        tables: List<TableEntity>,
+        properties: List<TablePropertyEntity>
+    ) {
+        updateTables(tables)
+        insertTablesIgnore(tables)      // вставит только новые (которые не обновились)
+        updateTableProperties(properties)
+        insertTablePropertiesIgnore(properties)
+    }
 }

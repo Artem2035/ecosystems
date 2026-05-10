@@ -70,7 +70,6 @@ class TreesManagementActivity : AppCompatActivity() {
                 return@launch
 
             plan.layers.forEach {layer->
-                Log.d("plan 1", "${layer}")
                 when(layer.type){
                     "points" -> {
                         if(layer.tableId == null) {
@@ -194,6 +193,10 @@ class TreesManagementActivity : AppCompatActivity() {
             layoutParams = LinearLayout.LayoutParams(columnWidth, LinearLayout.LayoutParams.MATCH_PARENT)
             setPadding(dpToPx(12), 0, dpToPx(12), 0)
             gravity = android.view.Gravity.CENTER_VERTICAL
+            maxLines = 5          // максимум 3 строки
+            isSingleLine = false
+            setHorizontallyScrolling(false) // отключаем горизонтальный скролл
+            ellipsize = null
         }
     }
 

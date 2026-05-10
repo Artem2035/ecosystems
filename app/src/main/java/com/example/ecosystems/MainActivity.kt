@@ -33,9 +33,7 @@ class MainActivity : AppCompatActivity() {
         // Запрашиваем геолокацию при старте
         locationPermissionManager.requestIfNeeded(
             onGranted = {
-/*                val message = Toast.makeText(this,"Разрешение получено!",
-                    Toast.LENGTH_SHORT)
-                message.show()*/
+                Log.d("Permission Granted","Разрешение получено!")
             },
             onDenied = {
                 val message = Toast.makeText(this,"Разрешение не получено!",
@@ -109,7 +107,7 @@ class MainActivity : AppCompatActivity() {
                 }
                 catch (e: Exception)
                 {
-                    Log.d("Error","Unexpected code ${e.message}")
+                    Log.e("Error","Unexpected code ${e.message}")
                     Toast.makeText(this@MainActivity, "Ошибка: ${e.message}", Toast.LENGTH_SHORT).show()
                 }
                 finally {
@@ -117,36 +115,6 @@ class MainActivity : AppCompatActivity() {
                     logInButton.isEnabled = true
                 }
             }
-
-/*            if(isInternetAvailable()){
-                Thread {
-                    try {
-                        token = api.GetToken(login,password)
-                        val intent =  Intent(this,MapActivity::class.java)
-
-                        tokenManager.saveToken(token)
-                        credentialsManager.save(login, password)
-                        Log.d("Текущий токен", token)
-                        startActivity(intent)
-                    }
-                    catch (exception: Exception)
-                    {
-                        Log.d("Error","Unexpected code ${exception.message}")
-                        Handler(Looper.getMainLooper()).post{
-                            val message = Toast.makeText(this,"Unexpected code ${exception.message}",
-                                Toast.LENGTH_SHORT)
-                            message.show()
-                        }
-                    }
-                }.start()
-            }
-            else{
-                val message = Toast.makeText(this,"Нет интернета! Включен оффлайн режим!",
-                    Toast.LENGTH_SHORT)
-                message.show()
-                val intent =  Intent(this,MapActivity::class.java)
-                startActivity(intent)
-            }*/
         }
     }
 }

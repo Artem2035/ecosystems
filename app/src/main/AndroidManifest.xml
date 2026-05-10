@@ -19,9 +19,6 @@
         android:theme="@style/Theme.Ecosystems"
         tools:targetApi="31">
         <activity
-            android:name=".Plan.PlanInfoActivity"
-            android:exported="false" />
-        <activity
             android:name=".TreesManagementActivity"
             android:exported="false" />
         <activity

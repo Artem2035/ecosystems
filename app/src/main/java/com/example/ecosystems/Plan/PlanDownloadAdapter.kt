@@ -7,9 +7,11 @@ import android.widget.Button
 import android.widget.ImageView
 import android.widget.ProgressBar
 import android.widget.TextView
+import android.widget.Toast
 import androidx.recyclerview.widget.RecyclerView
 import com.example.ecosystems.DataClasses.PlanDownloadItem
 import com.example.ecosystems.R
+import com.example.ecosystems.utils.isInternetAvailable
 
 class PlanDownloadAdapter(
     private val items: MutableList<PlanDownloadItem>,
@@ -63,7 +65,12 @@ class PlanDownloadAdapter(
 
         holder.downloadButton.setOnClickListener {
             // bindingAdapterPosition — актуальная позиция даже после notifyItemChanged
-            onDownload(item, holder.adapterPosition)
+            if(holder.itemView.context.isInternetAvailable())
+                onDownload(item, holder.adapterPosition)
+            else{
+                val message = Toast.makeText(holder.itemView.context,"Нет интернета!", Toast.LENGTH_SHORT)
+                message.show()
+            }
         }
     }
 }

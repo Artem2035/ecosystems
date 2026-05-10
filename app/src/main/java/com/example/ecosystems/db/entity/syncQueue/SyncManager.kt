@@ -1,8 +1,6 @@
 package com.example.ecosystems.db.entity.syncQueue
 
 import android.util.Log
-import com.example.ecosystems.db.dao.LayerEntityDao
-import com.example.ecosystems.db.dao.PlanEntityDao
 import com.example.ecosystems.db.dao.SyncQueueDao
 import com.example.ecosystems.db.dto.layer.LayerPointDto
 import com.example.ecosystems.db.dto.layer.toEntity
@@ -23,8 +21,8 @@ import kotlinx.coroutines.withContext
 
 class SyncManager(
     private val tableRepository: TableRepository,
-    private val layerDao: LayerEntityDao,
-    private val planDao: PlanEntityDao,
+    private val layerRepository: LayerRepository,
+    private val planRepository: PlanRepository,
     private val api: ApiService,
     private val token: String,
     private val syncQueueDao: SyncQueueDao,
@@ -146,8 +144,9 @@ class SyncManager(
     private suspend fun refetchLayers(layerIds: Set<Int>) {
         val gson = Gson()
         for (layerId in layerIds) {
-            val layer = layerDao.getLayerUUIDById(layerId)
-            val planUUID = planDao.getPlanUuidById(layer.gisObjectId) ?: continue
+            val layer = layerRepository.getLayerUUIDById(layerId)
+
+            val planUUID = planRepository.getPlanUuidById(layer.gisObjectId) ?: continue
 
             val responseJson = api.loadPlanLayers(token, planUUID)
             val root = gson.fromJson(responseJson, Map::class.java) as Map<String, Any?>
@@ -181,9 +180,9 @@ class SyncManager(
             }
 
             // Транзакционная перезапись
-            layerDao.deletePointsByLayerId(layerId)
-            layerDao.insertPoints(pointsEntities)
-            layerDao.savePointValues(pointValuesEntities)
+            layerRepository.deletePointsByLayerId(layerId)
+            layerRepository.insertPoints(pointsEntities)
+            layerRepository.savePointValuesFromServer(pointValuesEntities)
 
             Log.d("SyncManager", "Re-fetched layerId=$layerId, points=${pointsEntities.size}")
         }
@@ -195,15 +194,13 @@ fun buildSyncManager(
     tableRepository: TableRepository,
     planRepository: PlanRepository,
     syncQueueDao: SyncQueueDao,
-    layerDao: LayerEntityDao,
-    planDao: PlanEntityDao,
     api: ApiService,
     token: String
 ): SyncManager {
 
     val syncers = listOf(
-        PointSyncer(layerDao, planRepository, api, token, layerRepository)
+        PointSyncer(layerRepository, planRepository, api, token)
     ).associateBy { it.entityType }
 
-    return SyncManager(tableRepository,layerDao, planDao, api, token, syncQueueDao, syncers)
+    return SyncManager(tableRepository,layerRepository, planRepository, api, token, syncQueueDao, syncers)
 }

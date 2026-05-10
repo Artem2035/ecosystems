@@ -76,6 +76,10 @@ interface LayerEntityDao {
     @Delete
     suspend fun delete(layer: LayerEntity)
 
+    //удалить слои плана с planId
+    @Query("DELETE FROM layers WHERE gisObjectId = :planId")
+    suspend fun deletePlanLayers(planId: Int)
+
     //удалить точку с pointId
     @Query("DELETE FROM layer_points WHERE id = :pointId")
     suspend fun deletePoint(pointId: Int)

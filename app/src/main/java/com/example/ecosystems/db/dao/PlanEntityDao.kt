@@ -33,6 +33,9 @@ interface PlanEntityDao {
     //очистить все планы перед загрузкой с сервера
     @Query("DELETE FROM plans")
     suspend fun deleteAll()
+    //очистить все планы перед загрузкой с сервера
+    @Query("DELETE FROM plans WHERE id =:planId")
+    suspend fun deletePlan(planId: Int)
 
     @Query("SELECT * FROM plans ORDER BY id ASC")
     suspend fun getAllPlans(): List<PlanEntity>

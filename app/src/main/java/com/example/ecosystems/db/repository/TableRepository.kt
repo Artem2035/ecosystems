@@ -13,6 +13,13 @@ class TableRepository(private val tableEntityDao: TableEntityDao) {
         tableEntityDao.insertTablesWithProperties(tables, properties)
     }
 
+    suspend fun upsertTablesWithProperties(
+        tables: List<TableEntity>,
+        properties: List<TablePropertyEntity>
+    ) {
+        tableEntityDao.upsertTablesWithProperties(tables, properties)
+    }
+
     suspend fun getTableById(tableId: Int) =
         tableEntityDao.getTableById(tableId)
 
