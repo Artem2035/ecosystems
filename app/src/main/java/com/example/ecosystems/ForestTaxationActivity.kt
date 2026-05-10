@@ -15,6 +15,7 @@ import android.os.Looper
 import android.util.Log
 import android.view.View
 import android.widget.ImageButton
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -71,6 +72,7 @@ import com.yandex.mapkit.map.MapObjectTapListener
 import com.yandex.mapkit.map.PlacemarkMapObject
 import com.yandex.mapkit.map.TextStyle
 import com.yandex.mapkit.mapview.MapView
+import com.yandex.mapkit.user_location.UserLocationLayer
 import com.yandex.runtime.image.ImageProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -88,17 +90,19 @@ class ForestTaxationActivity : AppCompatActivity() {
         17f, 0.0f, 0.0f)
 
     /*список кластеризуемых коллекции точек, слои типа libraryImages*/
-    private var libraryImagesCollectionList: MutableList<ClusterizedPlacemarkCollection> = mutableListOf()
+    //private var libraryImagesCollectionList: MutableList<ClusterizedPlacemarkCollection> = mutableListOf()
+    /*map кластеризуемых коллекции слоя типа library_images, где ключ - id слоя, к которому коллекция относится*/
+    private var libraryImagesCollectionMap: MutableMap<Int, ClusterizedPlacemarkCollection> = mutableMapOf()
     /*список ClusterListener для кластеризуемых коллекции точек*/
     private var libraryImagesClusterListenerList: MutableList<ClusterListener> = mutableListOf()
     /*map кластеризуемых коллекции слоя типа points, где ключ - id слоя, к которому коллекция относится*/
     private var pointsCollectionMap: MutableMap<Int, ClusterizedPlacemarkCollection> = mutableMapOf()
     /* Реестр: pointId -> PlacemarkMapObject, для возомжности удалить маркер через кластер*/
-    private val pointMarkersMap2: MutableMap<Int, PlacemarkMapObject> = mutableMapOf()
     private val pointMarkersMap: MutableMap<Int, PointMarkerEntry> = mutableMapOf()
     /*список ClusterListener для кластеризуемых коллекции точек для списка слоев типа points*/
     private var pointsClusterListenerList: MutableList<ClusterListener> = mutableListOf()
-
+    /*map видимости сллоев, ключ - id, значение видимость слоя*/
+    private val layersVisibility: MutableMap<Int, Boolean> = mutableMapOf<Int, Boolean>()
     private var isSelecting = false
     private val selectedPoints = mutableListOf<Point>()
     private lateinit var selectButton: AppCompatButton
@@ -128,6 +132,8 @@ class ForestTaxationActivity : AppCompatActivity() {
     private lateinit var planRepository: PlanRepository
     private lateinit var tableRepository: TableRepository
     private lateinit var syncManager: SyncManager
+    private lateinit var userLocationLayer: UserLocationLayer
+    private lateinit var planNameTextView: TextView
 
     //перетескивание точки
     private var isDragging = false
@@ -174,6 +180,7 @@ class ForestTaxationActivity : AppCompatActivity() {
         syncManager = buildSyncManager(
             layerRepository = layerRepository,
             tableRepository =  tableRepository,
+            planRepository = planRepository,
             syncQueueDao = syncQueueDao,
             layerDao = layerDao,
             planDao= planDao,
@@ -183,6 +190,7 @@ class ForestTaxationActivity : AppCompatActivity() {
 
 
         mapView = findViewById(R.id.mapView)
+        setupUserLocation()
         // Мгновенное перемещение
         mapView.mapWindow.map.move(currentCameraPosition)
         mapView.mapWindow.map.set2DMode(true)
@@ -206,24 +214,22 @@ class ForestTaxationActivity : AppCompatActivity() {
             }
         }
 
-        val planInfoImageButton = findViewById<ImageButton>(R.id.planInfoImageButton)
-        // Кнопка для активации режима выбора
-        planInfoImageButton.setOnClickListener {
-            if(isInternetAvailable()){
-                if (selectedPlan != null) {
-                    val dialog = PlanInfoDialogFragment(selectedPlan!!, planRepository, layerRepository)
-                    dialog.show(supportFragmentManager, "plan_info_dialog")
+        planNameTextView = findViewById(R.id.planNameTextView)
 
-/*                    val intent =  Intent(this,PlanInfoActivity::class.java)
-                    val json = Gson().toJson(listOfPlanLayers)
-                    intent.putExtra("listOfPlanLayers", json)
-                    startActivity(intent)*/
-                } else {
-                    val message = Toast.makeText(this,"ГИС не выбран!",Toast.LENGTH_SHORT)
-                    message.show()
+        val planInfoImageButton = findViewById<ImageButton>(R.id.planInfoImageButton)
+        planInfoImageButton.setOnClickListener {
+            if (selectedPlan != null) {
+                val dialog = PlanInfoDialogFragment(selectedPlan!!, planRepository,
+                    layerRepository, layersVisibility){ newLayersVisibility ->
+                    newLayersVisibility.forEach { layerId, isVisible ->
+                        pointsCollectionMap[layerId]?.setVisible(isVisible)
+                        libraryImagesCollectionMap[layerId]?.setVisible(isVisible)
+                        layersVisibility[layerId] = isVisible
+                    }
                 }
-            }else {
-                val message = Toast.makeText(this,"Пока не доступно в офлайн режиме!",Toast.LENGTH_SHORT)
+                dialog.show(supportFragmentManager, "plan_info_dialog")
+            } else {
+                val message = Toast.makeText(this,"ГИС не выбран!",Toast.LENGTH_SHORT)
                 message.show()
             }
         }
@@ -246,9 +252,6 @@ class ForestTaxationActivity : AppCompatActivity() {
             val gson = Gson()
             val mapAdapter = gson.getAdapter(object: TypeToken<Map<String, Any?>>() {})
             try {
-                /*               val result: Map<String, Any?> = mapAdapter.fromJson(api.loadPlans(token))
-                               listOfPlans= result.get("plans") as MutableList<Map<String, Any?>>*/
-
                 val planFileEntities = mutableListOf<PlanFileEntity>()
                 val planEntities = mutableListOf<PlanEntity>()
 
@@ -725,7 +728,8 @@ class ForestTaxationActivity : AppCompatActivity() {
                         pointsCollectionMap.clear()
                         pointsClusterListenerList.clear()
                         planLibraryImagesMap.clear()
-                        libraryImagesCollectionList.clear()
+                        //libraryImagesCollectionList.clear()
+                        libraryImagesCollectionMap.clear()
                         libraryImagesClusterListenerList.clear()
                         for(layer in listOfPlanLayers){
                             if(layer.get("type") == "points"){
@@ -811,11 +815,16 @@ class ForestTaxationActivity : AppCompatActivity() {
                     pointsCollectionMap.clear()
                     pointsClusterListenerList.clear()
                     planLibraryImagesMap.clear()
-                    libraryImagesCollectionList.clear()
+                    //libraryImagesCollectionList.clear()
+                    libraryImagesCollectionMap.clear()
                     libraryImagesClusterListenerList.clear()
                     Log.d("DrawObjectsOnMap", "DrawObjectsOnMap")
                     DrawObjectsOnMap()
                 }
+            }
+
+            runOnUiThread {
+                planNameTextView.text = selectedPlan?.name
             }
         }
         dialog.show(supportFragmentManager, "search_plan_dialog")
@@ -886,7 +895,15 @@ class ForestTaxationActivity : AppCompatActivity() {
         cluster.addClusterTapListener(clusterTapListener)
     }
 
+    private fun setupUserLocation() {
+        userLocationLayer = MapKitFactory.getInstance()
+            .createUserLocationLayer(mapView.mapWindow)
 
+        //отображение точки местоположения
+        userLocationLayer.isVisible = true
+
+        userLocationLayer.setHeadingModeActive(true)  // стрелка направления движения
+    }
 
     fun DrawObjectsOnMap()
     {
@@ -922,6 +939,7 @@ class ForestTaxationActivity : AppCompatActivity() {
                                 }
                                 pointsClusterListenerList.add(tempPointsClusterListener)
                                 pointsCollectionMap[layer.id] = tempPointsCollection
+                                layersVisibility[layer.id] = true
                             }
                             "library_images" -> {
                                 val imageList = layerRepository.getImagesByLayerId(layer.id)
@@ -936,17 +954,21 @@ class ForestTaxationActivity : AppCompatActivity() {
                                     }
                                 }
                                 libraryImagesClusterListenerList.add(tempPointsClusterListener)
-                                libraryImagesCollectionList.add(tempPointsCollection)
+                                //libraryImagesCollectionList.add(tempPointsCollection)
+                                libraryImagesCollectionMap[layer.id] = tempPointsCollection
+                                layersVisibility[layer.id] = true
                             }
                         }
                     }
                     pointsCollectionMap.values.forEach {
                         it.clusterPlacemarks(50.0, 17)
                     }
-
-                    libraryImagesCollectionList.forEach {
+                    libraryImagesCollectionMap.values.forEach {
                         it.clusterPlacemarks(50.0, 17)
                     }
+/*                    libraryImagesCollectionList.forEach {
+                        it.clusterPlacemarks(50.0, 17)
+                    }*/
                 }
             }
         }
@@ -961,7 +983,8 @@ class ForestTaxationActivity : AppCompatActivity() {
         pointsCollectionMap.clear()
         pointsClusterListenerList.clear()
         planLibraryImagesMap.clear()
-        libraryImagesCollectionList.clear()
+        //libraryImagesCollectionList.clear()
+        libraryImagesCollectionMap.clear()
         libraryImagesClusterListenerList.clear()
     }
 }

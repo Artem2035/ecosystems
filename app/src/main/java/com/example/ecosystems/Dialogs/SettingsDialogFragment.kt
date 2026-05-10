@@ -160,7 +160,6 @@ class SettingsDialogFragment(private val token:String,
 
         lifecycleScope.launch(Dispatchers.IO) {
             try {
-                loadTables()
                 loadPlanLayers(item.plan)
 
                 withContext(Dispatchers.Main) {
@@ -256,7 +255,6 @@ class SettingsDialogFragment(private val token:String,
 
     private fun loadTables(){
         lifecycleScope.launch(Dispatchers.IO) {
-
             val tablesEntities = mutableListOf<TableEntity>()
             val tablePropertiesEntities = mutableListOf<TablePropertyEntity>()
 
@@ -273,6 +271,43 @@ class SettingsDialogFragment(private val token:String,
                             while (reader.hasNext()) {
                                 // Читаем один layer как Map — только один объект в RAM
                                 val tableDto: TableDto = gson.fromJson(reader, TableDto::class.java)
+                                tablesEntities.add(tableDto.toEntity())
+                                tableDto.properties?.forEach {
+                                    tablePropertiesEntities.add(it.toEntity())
+                                }
+                            }
+                            reader.endArray()
+                        }
+                        else -> reader.skipValue()
+                    }
+                }
+                reader.endObject()
+
+                tableRepository.insertTablesWithProperties(tablesEntities, tablePropertiesEntities)
+            }
+        }
+    }
+
+    private fun loadPlanTable(tableId: Int){
+        lifecycleScope.launch(Dispatchers.IO) {
+            val tablesEntities = mutableListOf<TableEntity>()
+            val tablePropertiesEntities = mutableListOf<TablePropertyEntity>()
+
+            val gson = Gson()
+            api.loadTables(token).use { body ->
+                // JsonReader читает токен за токеном без загрузки всего JSON
+                val reader = com.google.gson.stream.JsonReader(body.charStream())
+
+                reader.beginObject()
+                while (reader.hasNext()) {
+                    when (reader.nextName()) {
+                        "tables" -> {
+                            reader.beginArray()
+                            while (reader.hasNext()) {
+                                val tableDto: TableDto = gson.fromJson(reader, TableDto::class.java)
+                                if(tableDto.id != tableId)
+                                    continue
+
                                 tablesEntities.add(tableDto.toEntity())
                                 tableDto.properties?.forEach {
                                     tablePropertiesEntities.add(it.toEntity())
@@ -333,6 +368,9 @@ class SettingsDialogFragment(private val token:String,
                                     }
                                     is String -> value.toIntOrNull()
                                     else -> null
+                                }
+                                if (tableId != null){
+                                    loadPlanTable(tableId)
                                 }
 
                                 val layerEnt = LayerEntity(

@@ -18,6 +18,10 @@ class PlanRepository(private val planEntityDao: PlanEntityDao) {
 
     fun getAllPlansWithData() = planEntityDao.getAllPlansWithData()
 
+    suspend fun getPlanById(planId: Int) = planEntityDao.getPlanById(planId)
+
+    suspend fun getPlanUuidById(planId: Int) =  planEntityDao.getPlanUuidById(planId)
+
     suspend fun getPlanData(planId: Int) = planEntityDao.getPlanWithData(planId)
 
     suspend fun getPlanFiles(planId: Int) = planEntityDao.getPlanFiles(planId)

@@ -10,6 +10,7 @@ import com.example.ecosystems.db.entity.layer.LayerPointEntity
 import com.example.ecosystems.db.entity.layer.PointValueEntity
 import com.example.ecosystems.db.entity.syncQueue.synchronizers.PointSyncer
 import com.example.ecosystems.db.repository.LayerRepository
+import com.example.ecosystems.db.repository.PlanRepository
 import com.example.ecosystems.db.repository.TableRepository
 import com.example.ecosystems.network.ApiService
 import com.google.gson.Gson
@@ -66,7 +67,6 @@ class SyncManager(
             val syncer = syncers[typeOp.first] ?: continue
 
             val results = try {
-                Log.d("PointSyncer 1","${items}")
                 syncer.syncBatch(items)
             } catch (e: Exception) {
                 Log.e("SyncManager", "Batch sync failed for ${typeOp}", e)
@@ -125,7 +125,6 @@ class SyncManager(
         val allAffectedLayerIds = syncers.values
             .flatMap { it.getAffectedLayerIds() }
             .toSet()
-        Log.d("PointSyncer", "${allAffectedLayerIds}")
         if (allAffectedLayerIds.isNotEmpty() && failedCount == 0) {
             try {
                 refetchLayers(allAffectedLayerIds)
@@ -194,6 +193,7 @@ class SyncManager(
 fun buildSyncManager(
     layerRepository: LayerRepository,
     tableRepository: TableRepository,
+    planRepository: PlanRepository,
     syncQueueDao: SyncQueueDao,
     layerDao: LayerEntityDao,
     planDao: PlanEntityDao,
@@ -202,7 +202,7 @@ fun buildSyncManager(
 ): SyncManager {
 
     val syncers = listOf(
-        PointSyncer(layerDao, planDao, api, token, layerRepository)
+        PointSyncer(layerDao, planRepository, api, token, layerRepository)
     ).associateBy { it.entityType }
 
     return SyncManager(tableRepository,layerDao, planDao, api, token, syncQueueDao, syncers)

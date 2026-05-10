@@ -105,7 +105,9 @@ interface LayerEntityDao {
     //получить id таблицы по id слоя
     @Query("SELECT tableId FROM layers WHERE id = :layerId")
     suspend fun getTableIdByLayerId(layerId: Int): Int?
-
+    //получить слои без данных для плана с planId
+    @Query("SELECT * FROM layers WHERE gisObjectId = :planId")
+    suspend fun getLayersByPlanId(planId: Int): List<LayerEntity>?
 
     // Layer + images + points
     @Transaction

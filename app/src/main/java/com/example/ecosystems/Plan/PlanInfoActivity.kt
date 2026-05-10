@@ -16,9 +16,9 @@ class PlanInfoActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_plan_info)
+        setContentView(R.layout.dialog_plan_info)
 
-        val json = intent.getStringExtra("listOfPlanLayers")
+/*        val json = intent.getStringExtra("listOfPlanLayers")
         val type = object : TypeToken<MutableList<Map<String, Any?>>>() {}.type
         listOfPlanLayers = Gson().fromJson(json, type)
 
@@ -46,6 +46,6 @@ class PlanInfoActivity : AppCompatActivity() {
         backButton.setOnClickListener {
             val intent =  Intent(this,ForestTaxationActivity::class.java)
             startActivity(intent)
-        }
+        }*/
     }
 }

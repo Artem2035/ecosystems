@@ -62,18 +62,18 @@ class LayerRepository(private val layerDao: LayerEntityDao,
     suspend fun insertLayers(layers: List<LayerEntity>) {
         layerDao.insertLayers(layers)
     }
-
+    suspend fun insertAllPoints(points: List<LayerPointEntity>) {
+        layerDao.insertPoints(points)
+    }
+    suspend fun insertAllImages(images: List<LayerImageEntity>) {
+        layerDao.insertImages(images)
+    }
     suspend fun clearSyncQueue() {
         syncQueueDao.deleteAll()
     }
 
-
-    suspend fun insertAllPoints(points: List<LayerPointEntity>) {
-        layerDao.insertPoints(points)
-    }
     // одиночная вставка точки LayerPointEntity
     suspend fun insertPoint(point: LayerPointEntity): Long {
-        //layerDao.insertPoint(point)
         val newId = layerDao.insertPoint(point)
         syncQueueDao.enqueue(
             SyncQueueEntity(
@@ -95,9 +95,6 @@ class LayerRepository(private val layerDao: LayerEntityDao,
         layerDao.insertAllData(layers, points, images, pointsValues)
     }
 
-    suspend fun insertAllImages(images: List<LayerImageEntity>) {
-        layerDao.insertImages(images)
-    }
     //удалить точку с pointId
     suspend fun deletePoint(pointId: Int) {
         // Если точка никогда не была на сервере — просто чистим всю очередь по ней
@@ -127,7 +124,7 @@ class LayerRepository(private val layerDao: LayerEntityDao,
         layerDao.deletePoint(pointId)
     }
     //удалить незаполненное значение точки
-    suspend fun deletePointValue(pointId: Int, propertyId: Int) {
+    /*suspend fun deletePointValue(pointId: Int, propertyId: Int) {
         val point = layerDao.getPointById(pointId) ?: return
         layerDao.deletePointValue(pointId, propertyId)
 
@@ -148,7 +145,7 @@ class LayerRepository(private val layerDao: LayerEntityDao,
                 operation = SyncOperation.UPDATE
             )
         )
-    }
+    }*/
 
     suspend fun deletePointValues(pointId: Int, propertyIds: List<Int>) {
 
@@ -201,22 +198,14 @@ class LayerRepository(private val layerDao: LayerEntityDao,
         )
     }
 
-    fun getAllLayersWithData() = layerDao.getAllLayersWithData()
-
-    suspend fun getLayerWithData(layerId: Int) = layerDao.getLayerWithData(layerId)
+    suspend fun getLayersByPlanId(planId: Int) = layerDao.getLayersByPlanId(planId)
 
     fun getPointsWithValues(layerId: Int) = layerDao.getPointsWithValues(layerId)
-
-    fun getAllPointsWithValues() = layerDao.getAllPointsWithValues()
 
     //получить все точки LayerPointEntity для слоя с layerId
     suspend fun getPointsByLayerId(layerId: Int) = layerDao.getPointsByLayerId(layerId)
 
     suspend fun getImagesByLayerId(layerId: Int) = layerDao.getImagesByLayerId(layerId)
-
-    fun getAllLayerPoints() = layerDao.getAllLayerPoints()
-
-    fun getAllPointsRaw() = layerDao.getAllPointsRaw()
 
     //получить значения для точки с данным id
     fun getPointWithValuesByPointId(pointId: Int) = layerDao.getPointWithValuesByPointId(pointId)

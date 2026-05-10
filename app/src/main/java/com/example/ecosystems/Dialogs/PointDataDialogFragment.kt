@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.text.InputType
+import android.util.Log
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -80,7 +81,7 @@ class PointDataDialogFragment(private val pointId:Int,
                     ?.first() // берём один снимок, подписка не нужна
                     ?.firstOrNull()
             }
-
+            Log.d("pv 2", "скачано для ${pointWithValues}")
             val valuesMap = pointWithValues?.values
                 ?.associate { it.value.propertyId to it.value.value }
                 ?: emptyMap()

@@ -3,7 +3,6 @@ package com.example.ecosystems.db.entity.syncQueue.synchronizers
 import android.util.Log
 import com.example.ecosystems.DataClasses.CreatePointRequest
 import com.example.ecosystems.db.dao.LayerEntityDao
-import com.example.ecosystems.db.dao.PlanEntityDao
 import com.example.ecosystems.db.entity.layer.toCreateRequest
 import com.example.ecosystems.db.entity.layer.toUpdateRequest
 import com.example.ecosystems.db.entity.syncQueue.EntitySyncer
@@ -11,13 +10,14 @@ import com.example.ecosystems.db.entity.syncQueue.SyncEntityType
 import com.example.ecosystems.db.entity.syncQueue.SyncOperation
 import com.example.ecosystems.db.entity.syncQueue.SyncQueueEntity
 import com.example.ecosystems.db.repository.LayerRepository
+import com.example.ecosystems.db.repository.PlanRepository
 import com.example.ecosystems.network.ApiService
 import com.google.gson.Gson
 import kotlinx.coroutines.flow.firstOrNull
 
 class PointSyncer(
     private val layerDao: LayerEntityDao,
-    private val planDao: PlanEntityDao,
+    private val planRepository: PlanRepository,
     private val api: ApiService,
     private val token: String,
     private val layerRepository: LayerRepository
@@ -55,7 +55,7 @@ class PointSyncer(
             val layer = layerDao.getLayerUUIDById(point.layerId)
 
             // Получаем uuid плана через gisObjectId слоя
-            val planUUID = planDao.getPlanUuidById(layer.gisObjectId)
+            val planUUID = planRepository.getPlanUuidById(layer.gisObjectId)
             if (planUUID == null) {
                 Log.e("PointSyncer", "planUUID не найден для layerId=${point.layerId}")
                 results[item.entityId] = false

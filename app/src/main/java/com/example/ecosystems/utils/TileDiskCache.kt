@@ -37,11 +37,16 @@ class TileDiskCache(context: Context) {
         val tmp = File(target.parent, "${target.name}.tmp")
         try {
             tmp.writeBytes(data)
-            tmp.renameTo(target)
+            if (!tmp.renameTo(target)) {
+                Log.e("TileDiskCache","Rename FAILED: ${tmp.absolutePath} -> ${target.absolutePath}")
+            }
         } catch (e: Exception) {
             Log.e("TileDiskCache", "Write FAILED: ${e.message}", e)
         } finally {
-            if (tmp.exists()) tmp.delete()
+            if (tmp.exists()) {
+                if(!tmp.delete())
+                    Log.e("TileDiskCache","Delete FAILED: ${tmp}")
+            }
         }
     }
 

@@ -11,6 +11,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.example.ecosystems.data.local.SecureCredentialsManager
 import com.example.ecosystems.network.ApiService
+import com.example.ecosystems.utils.LocationPermissionManager
 import com.example.ecosystems.utils.isInternetAvailable
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -23,13 +24,28 @@ class MainActivity : AppCompatActivity() {
     private lateinit var editTextPassword: EditText
     private var token = ""
 
+    private val locationPermissionManager = LocationPermissionManager(this)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        // Запрашиваем геолокацию при старте
+        locationPermissionManager.requestIfNeeded(
+            onGranted = {
+/*                val message = Toast.makeText(this,"Разрешение получено!",
+                    Toast.LENGTH_SHORT)
+                message.show()*/
+            },
+            onDenied = {
+                val message = Toast.makeText(this,"Разрешение не получено!",
+                    Toast.LENGTH_SHORT)
+                message.show()
+            }
+        )
+
         editTextLogin = findViewById(R.id.editTextLogin)
         editTextPassword = findViewById(R.id.editTextPassword)
-        //editTextPassword.setText(BuildConfig.BUTTON_TEXT)
         val logInButton: Button = findViewById(com.example.ecosystems.R.id.logInButton)
         val registrationButton: Button = findViewById(com.example.ecosystems.R.id.registrationButton)
 
